@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff } from 'lucide-react';
 import { analyzeSentence, AnalyzedWord, searchGrammarRule } from './services/geminiService';
 import Auth from './components/Auth';
-import splashImage from './components/splash.png';
 
 const categoryColors: Record<AnalyzedWord['category'] | 'جملة', string> = {
   'فعل': 'text-red-600',
@@ -32,7 +31,7 @@ function Splash({ onComplete }: { onComplete: () => void }) {
       exit={{ opacity: 0 }}
       className="fixed inset-0 flex flex-col items-center justify-end p-6"
     >
-      <img src={splashImage} alt="Splash Screen" className="absolute inset-0 w-full h-full object-cover" />
+      <img src="/splash.png" alt="Splash Screen" className="absolute inset-0 w-full h-full object-cover" />
       
       <div className="relative z-10 text-amber-100 mb-6 font-serif text-lg bg-black/30 px-4 py-2 rounded-lg">
         تصميم وإعداد / علاء الوكيل
