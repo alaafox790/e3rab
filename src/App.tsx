@@ -102,6 +102,7 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [savedResults, setSavedResults] = useState<{id: number, sentence: string, result: AnalyzedWord[]}[]>([]);
   const [isListening, setIsListening] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -174,6 +175,7 @@ export default function App() {
     setRuleQuery('');
     setRuleResult('');
     setImage(null);
+    setErrorMessage(null);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,12 +209,14 @@ export default function App() {
   const handleAnalyze = async () => {
     if (!sentence.trim() && !image) return;
     setLoading(true);
+    setErrorMessage(null);
     try {
       const base64Image = image ? image.split(',')[1] : undefined;
       const analysis = await analyzeSentence(sentence, mode, targetWords, base64Image);
       setResult(analysis);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      setErrorMessage(error.message || "حدث خطأ غير متوقع أثناء الإعراب. تأكد من إعداد مفتاح API بشكل صحيح.");
       setResult([]);
     } finally {
       setLoading(false);
@@ -353,6 +357,11 @@ export default function App() {
                     {loading ? <Loader2 className="animate-spin" /> : <Search />}
                     إعراب
                   </button>
+                  {errorMessage && (
+                    <div className="p-4 bg-red-100 text-red-700 border border-red-300 rounded-xl mt-2">
+                      {errorMessage}
+                    </div>
+                  )}
                 </div>
 
                 {result.length > 0 && (
