@@ -47,7 +47,7 @@ function Splash({ onComplete }: { onComplete: () => void }) {
           className="text-5xl md:text-7xl font-bold text-amber-400 mb-6 text-center font-serif drop-shadow-lg flex flex-col items-center gap-4"
         >
           <span>معرب الجمل العربية</span>
-          <span className="text-sm md:text-base bg-amber-600/30 text-amber-200 px-4 py-1 rounded-full font-sans tracking-wider border border-amber-500/30">تحديث رقم 100</span>
+          <span className="text-sm md:text-base bg-amber-600/30 text-amber-200 px-4 py-1 rounded-full font-sans tracking-wider border border-amber-500/30">تحديث رقم 101</span>
         </motion.h1>
         
         <motion.p 
@@ -253,6 +253,7 @@ export default function App() {
       const base64Image = image ? image.split(',')[1] : undefined;
       const analysis = await analyzeSentence(sentence, mode, targetWords, base64Image);
       setResult(analysis);
+      setCooldown(3); // فترة راحة قصيرة لتنظيم الطلبات
     } catch (error: any) {
       console.error(error);
       const msg = error.message || "حدث خطأ غير متوقع أثناء الإعراب. تأكد من إعداد مفتاح API بشكل صحيح.";
@@ -275,6 +276,8 @@ export default function App() {
       const result = await searchGrammarRule(ruleQuery);
       if (result.includes('الانتظار') || result.includes('تجاوز') || result.includes('ضغط')) {
         setCooldown(30);
+      } else {
+        setCooldown(3); // فترة راحة قصيرة لتنظيم الطلبات
       }
       setRuleResult(result);
     } catch (error) {
@@ -294,6 +297,8 @@ export default function App() {
       const result = await analyzePoetry(poetryQuery);
       if (result.includes('الانتظار') || result.includes('تجاوز') || result.includes('ضغط')) {
         setCooldown(30);
+      } else {
+        setCooldown(3); // فترة راحة قصيرة لتنظيم الطلبات
       }
       setPoetryResult(result);
     } catch (error) {
@@ -320,7 +325,7 @@ export default function App() {
             <div className="flex justify-between items-center mb-6">
               <div className="flex-grow flex flex-col items-center justify-center">
                 <h1 className="text-3xl font-bold text-stone-900 text-center">معرب الجمل العربية</h1>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full mt-2">تحديث رقم 100</span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full mt-2">تحديث رقم 101</span>
               </div>
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-200 p-2 rounded-lg">+</button>
@@ -431,7 +436,9 @@ export default function App() {
                     className={`text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors min-w-[200px] ${cooldown > 0 ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   >
                     {cooldown > 0 ? (
-                      <span className="text-sm font-bold">يرجى الانتظار {cooldown} ثانية...</span>
+                      <span className="text-sm font-bold">
+                        {errorMessage ? `يرجى الانتظار ${cooldown} ثانية...` : `جاهز بعد ${cooldown}ث...`}
+                      </span>
                     ) : loading ? (
                       <>
                         <Loader2 className="animate-spin" />
@@ -536,7 +543,9 @@ export default function App() {
                     className={`shrink-0 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${cooldown > 0 ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   >
                     {cooldown > 0 ? (
-                      <span>انتظر {cooldown} ثانية</span>
+                      <span className="text-sm font-bold">
+                        {ruleResult.includes('ضغط') || ruleResult.includes('تجاوز') ? `انتظر ${cooldown}ث` : `جاهز بعد ${cooldown}ث`}
+                      </span>
                     ) : ruleLoading ? (
                       <Loader2 className="animate-spin" />
                     ) : (
@@ -573,7 +582,9 @@ export default function App() {
                     className={`shrink-0 text-white px-6 py-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors min-w-[120px] ${cooldown > 0 ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   >
                     {cooldown > 0 ? (
-                      <span>انتظر {cooldown}ث</span>
+                      <span className="text-sm font-bold">
+                        {poetryResult.includes('ضغط') || poetryResult.includes('تجاوز') ? `انتظر ${cooldown}ث` : `جاهز بعد ${cooldown}ث`}
+                      </span>
                     ) : poetryLoading ? (
                       <Loader2 className="animate-spin" />
                     ) : (
