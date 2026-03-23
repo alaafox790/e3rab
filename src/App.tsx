@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight } from 'lucide-react';
+import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff } from 'lucide-react';
 import { analyzeSentence, AnalyzedWord, searchGrammarRule } from './services/geminiService';
 import Auth from './components/Auth';
 import splashImage from './components/splash.png';
@@ -19,6 +19,9 @@ const categoryColors: Record<AnalyzedWord['category'] | 'جملة', string> = {
   'مجرور': 'text-orange-600',
   'أخرى': 'text-stone-600',
   'جملة': 'text-teal-600',
+  'استخراج': 'text-indigo-600',
+  'منادى': 'text-pink-600',
+  'تحويل': 'text-cyan-600',
 };
 
 function Splash({ onComplete }: { onComplete: () => void }) {
@@ -51,7 +54,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isRegistered'));
   const [sentence, setSentence] = useState('');
-  const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position'>('full');
+  const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert'>('full');
   const [displayMode, setDisplayMode] = useState<'table' | 'separated'>('table');
   const [targetWords, setTargetWords] = useState('');
   const [result, setResult] = useState<AnalyzedWord[]>([]);
@@ -65,14 +68,57 @@ export default function App() {
   const [image, setImage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [savedResults, setSavedResults] = useState<{id: number, sentence: string, result: AnalyzedWord[]}[]>([]);
+  const [isListening, setIsListening] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('savedResults');
     if (saved) {
       setSavedResults(JSON.parse(saved));
     }
+
+    // Initialize Speech Recognition
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'ar-SA';
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
+          .join('');
+        setSentence(transcript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
   }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert('عذراً، متصفحك لا يدعم ميزة التعرف على الصوت.');
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
 
   const handleSave = () => {
     const newSaved = [...savedResults, { id: Date.now(), sentence, result }];
@@ -206,6 +252,18 @@ export default function App() {
                     <input type="radio" checked={mode === 'sentence-position'} onChange={() => setMode('sentence-position')} />
                     الموقع الإعرابي للجمل
                   </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" checked={mode === 'extract'} onChange={() => setMode('extract')} />
+                    استخراج (صرف/نحو)
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" checked={mode === 'vocative'} onChange={() => setMode('vocative')} />
+                    نوع المنادى
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" checked={mode === 'convert'} onChange={() => setMode('convert')} />
+                    تحويل نحوي
+                  </label>
                   <label className="flex items-center gap-2 text-red-600">
                     <input type="radio" checked={false} onChange={handleClear} />
                     مسح النتائج وبدء جديد
@@ -229,21 +287,28 @@ export default function App() {
                       type="text"
                       value={sentence}
                       onChange={(e) => setSentence(e.target.value)}
-                      placeholder="أدخل الجملة..."
+                      placeholder={mode === 'extract' ? "أدخل القطعة أو النص هنا..." : mode === 'vocative' ? "أدخل أسلوب النداء هنا..." : mode === 'convert' ? "أدخل الجملة الأصلية هنا..." : "أدخل الجملة..."}
                       className="flex-grow p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
+                    <button
+                      onClick={toggleListening}
+                      className={`p-3 rounded-xl transition-colors ${isListening ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-stone-200 hover:bg-stone-300'}`}
+                      title="التحدث بالصوت"
+                    >
+                      {isListening ? <MicOff /> : <Mic />}
+                    </button>
                     <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-                    <button onClick={() => fileInputRef.current?.click()} className="bg-stone-200 p-3 rounded-xl hover:bg-stone-300">
+                    <button onClick={() => fileInputRef.current?.click()} className="bg-stone-200 p-3 rounded-xl hover:bg-stone-300" title="إرفاق صورة">
                       <Camera />
                     </button>
                   </div>
                   {image && <img src={image} alt="uploaded" className="max-h-40 rounded-xl" />}
-                  {mode === 'partial' && (
+                  {(mode === 'partial' || mode === 'extract' || mode === 'convert') && (
                     <input
                       type="text"
                       value={targetWords}
                       onChange={(e) => setTargetWords(e.target.value)}
-                      placeholder="أدخل الكلمات المراد إعرابها (مفصولة بفاصلة)..."
+                      placeholder={mode === 'extract' ? "ما الذي تريد استخراجه؟ (مثال: اسم فاعل، صيغة مبالغة، ممنوع من الصرف...)" : mode === 'convert' ? "ما هو التحويل المطلوب؟ (مثال: حول الجملة الاسمية إلى فعلية، أو حول الحال المفرد إلى جملة)" : "أدخل الكلمات المراد إعرابها (مفصولة بفاصلة)..."}
                       className="p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                   )}
