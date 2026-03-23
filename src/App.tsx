@@ -29,22 +29,56 @@ function Splash({ onComplete }: { onComplete: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 flex flex-col items-center justify-end p-6"
+      className="fixed inset-0 flex flex-col items-center justify-center p-6 bg-gradient-to-br from-emerald-900 via-teal-900 to-stone-900"
     >
-      <img src="/splash.png" alt="Splash Screen" className="absolute inset-0 w-full h-full object-cover" />
-      
-      <div className="relative z-10 text-amber-100 mb-6 font-serif text-lg bg-black/30 px-4 py-2 rounded-lg">
-        تصميم وإعداد / علاء الوكيل
+      <div className="flex-grow flex flex-col items-center justify-center">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="mb-8 p-6 bg-white/10 rounded-full backdrop-blur-sm border border-white/20 shadow-2xl"
+        >
+          <BookOpenText size={80} className="text-amber-400" />
+        </motion.div>
+        
+        <motion.h1 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.8 }}
+          className="text-5xl md:text-7xl font-bold text-amber-400 mb-6 text-center font-serif drop-shadow-lg"
+        >
+          معرب الجمل العربية
+        </motion.h1>
+        
+        <motion.p 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.8 }}
+          className="text-xl md:text-2xl text-emerald-100 mb-12 text-center max-w-lg leading-relaxed font-light"
+        >
+          الأداة الذكية لإعراب النصوص العربية بدقة وسهولة
+        </motion.p>
       </div>
-
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={onComplete}
-        className="relative z-10 bg-amber-800 text-amber-100 border border-amber-600 px-12 py-4 rounded-full text-xl font-bold flex items-center gap-2 hover:bg-amber-900 transition-all shadow-lg shadow-black/50 mb-12"
+      
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.7, duration: 0.8 }}
+        className="flex flex-col items-center gap-8 mb-12 w-full max-w-md"
       >
-        دخول <ArrowRight />
-      </motion.button>
+        <div className="text-amber-200/80 font-serif text-lg px-8 py-3 border-t border-b border-amber-500/30 tracking-wide text-center w-full">
+          تصميم وإعداد / علاء الوكيل
+        </div>
+
+        <motion.button
+          whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(217,119,6,0.6)" }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onComplete}
+          className="bg-amber-600 text-white px-16 py-5 rounded-full text-2xl font-bold flex items-center gap-4 hover:bg-amber-500 transition-all shadow-[0_0_20px_rgba(217,119,6,0.4)]"
+        >
+          دخول <ArrowRight size={28} />
+        </motion.button>
+      </motion.div>
     </motion.div>
   );
 }
