@@ -65,7 +65,7 @@ export async function analyzeSentence(sentence: string, mode: 'full' | 'partial'
               word: { type: Type.STRING, description: "الكلمة أو الجملة" },
               category: { 
                 type: Type.STRING, 
-                enum: ['فعل', 'اسم', 'مرفوع', 'منصوب', 'مجزوم', 'مجرور', 'أخرى', 'جملة', 'استخراج', 'منادى', 'تحويل'] 
+                description: "يجب أن تكون إحدى القيم التالية: فعل، اسم، مرفوع، منصوب، مجزوم، مجرور، أخرى، جملة، استخراج، منادى، تحويل"
               },
               analysis: { type: Type.STRING, description: "الإعراب أو الموقع الإعرابي" }
             },
@@ -80,16 +80,20 @@ export async function analyzeSentence(sentence: string, mode: 'full' | 'partial'
     console.error("Gemini API Error:", error);
     const errorMessage = error.message || String(error);
     
-    if (errorMessage.includes("500") || errorMessage.includes("Internal error") || errorMessage.includes("503")) {
-      if (retryCount < 2) {
-        console.log(`Retrying API call (attempt ${retryCount + 1})...`);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        return analyzeSentence(sentence, mode, targetWords, image, retryCount + 1);
-      }
-      throw new Error("عذراً، هناك ضغط حالياً على خوادم الذكاء الاصطناعي. يرجى المحاولة مرة أخرى بعد قليل.");
+    const isRetryable = errorMessage.includes("500") || errorMessage.includes("503") || errorMessage.includes("429") || errorMessage.includes("Internal error") || errorMessage.includes("Too Many Requests") || errorMessage.includes("fetch failed") || errorMessage.includes("network") || errorMessage.includes("timeout");
+
+    if (isRetryable && retryCount < 3) {
+      const delay = Math.pow(2, retryCount) * 1500;
+      console.log(`Retrying API call (attempt ${retryCount + 1}) after ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return analyzeSentence(sentence, mode, targetWords, image, retryCount + 1);
     }
     
-    throw new Error("حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.");
+    if (errorMessage.includes("429") || errorMessage.includes("Too Many Requests")) {
+       throw new Error("عذراً، هناك ضغط كبير على خوادم الذكاء الاصطناعي حالياً. يرجى الانتظار ثوانٍ قليلة ثم المحاولة مرة أخرى.");
+    }
+    
+    throw new Error("فقد الاتصال بالذكاء الاصطناعي. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.");
   }
 }
 
@@ -114,16 +118,20 @@ export async function searchGrammarRule(ruleName: string, retryCount = 0): Promi
     console.error("Gemini API Error:", error);
     const errorMessage = error.message || String(error);
     
-    if (errorMessage.includes("500") || errorMessage.includes("Internal error") || errorMessage.includes("503")) {
-      if (retryCount < 2) {
-        console.log(`Retrying API call (attempt ${retryCount + 1})...`);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        return searchGrammarRule(ruleName, retryCount + 1);
-      }
-      return "عذراً، هناك ضغط حالياً على خوادم الذكاء الاصطناعي. يرجى المحاولة مرة أخرى بعد قليل.";
+    const isRetryable = errorMessage.includes("500") || errorMessage.includes("503") || errorMessage.includes("429") || errorMessage.includes("Internal error") || errorMessage.includes("Too Many Requests") || errorMessage.includes("fetch failed") || errorMessage.includes("network") || errorMessage.includes("timeout");
+
+    if (isRetryable && retryCount < 3) {
+      const delay = Math.pow(2, retryCount) * 1500;
+      console.log(`Retrying API call (attempt ${retryCount + 1}) after ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return searchGrammarRule(ruleName, retryCount + 1);
     }
     
-    return "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.";
+    if (errorMessage.includes("429") || errorMessage.includes("Too Many Requests")) {
+       return "عذراً، هناك ضغط كبير على خوادم الذكاء الاصطناعي حالياً. يرجى الانتظار ثوانٍ قليلة ثم المحاولة مرة أخرى.";
+    }
+    
+    return "فقد الاتصال بالذكاء الاصطناعي. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.";
   }
 }
 
@@ -148,15 +156,19 @@ export async function analyzePoetry(verse: string, retryCount = 0): Promise<stri
     console.error("Gemini API Error:", error);
     const errorMessage = error.message || String(error);
     
-    if (errorMessage.includes("500") || errorMessage.includes("Internal error") || errorMessage.includes("503")) {
-      if (retryCount < 2) {
-        console.log(`Retrying API call (attempt ${retryCount + 1})...`);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        return analyzePoetry(verse, retryCount + 1);
-      }
-      return "عذراً، هناك ضغط حالياً على خوادم الذكاء الاصطناعي. يرجى المحاولة مرة أخرى بعد قليل.";
+    const isRetryable = errorMessage.includes("500") || errorMessage.includes("503") || errorMessage.includes("429") || errorMessage.includes("Internal error") || errorMessage.includes("Too Many Requests") || errorMessage.includes("fetch failed") || errorMessage.includes("network") || errorMessage.includes("timeout");
+
+    if (isRetryable && retryCount < 3) {
+      const delay = Math.pow(2, retryCount) * 1500;
+      console.log(`Retrying API call (attempt ${retryCount + 1}) after ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return analyzePoetry(verse, retryCount + 1);
     }
     
-    return "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.";
+    if (errorMessage.includes("429") || errorMessage.includes("Too Many Requests")) {
+       return "عذراً، هناك ضغط كبير على خوادم الذكاء الاصطناعي حالياً. يرجى الانتظار ثوانٍ قليلة ثم المحاولة مرة أخرى.";
+    }
+    
+    return "فقد الاتصال بالذكاء الاصطناعي. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.";
   }
 }
