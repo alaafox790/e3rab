@@ -113,8 +113,21 @@ export default function App() {
   const [savedResults, setSavedResults] = useState<{id: number, sentence: string, result: AnalyzedWord[]}[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (cooldown > 0) {
+      interval = setInterval(() => {
+        setCooldown(c => c - 1);
+      }, 1000);
+    } else if (cooldown === 0 && errorMessage?.includes('الانتظار')) {
+      setErrorMessage(null);
+    }
+    return () => clearInterval(interval);
+  }, [cooldown, errorMessage]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -231,6 +244,8 @@ export default function App() {
 
   const handleAnalyze = async () => {
     if (!sentence.trim() && !image) return;
+    if (cooldown > 0) return;
+    
     setLoading(true);
     setErrorMessage(null);
     try {
@@ -239,7 +254,11 @@ export default function App() {
       setResult(analysis);
     } catch (error: any) {
       console.error(error);
-      setErrorMessage(error.message || "حدث خطأ غير متوقع أثناء الإعراب. تأكد من إعداد مفتاح API بشكل صحيح.");
+      const msg = error.message || "حدث خطأ غير متوقع أثناء الإعراب. تأكد من إعداد مفتاح API بشكل صحيح.";
+      setErrorMessage(msg);
+      if (msg.includes('الانتظار') || msg.includes('ضغط')) {
+        setCooldown(15); // 15 seconds cooldown
+      }
       setResult([]);
     } finally {
       setLoading(false);
@@ -248,9 +267,14 @@ export default function App() {
 
   const handleSearchRule = async () => {
     if (!ruleQuery.trim()) return;
+    if (cooldown > 0) return;
+    
     setRuleLoading(true);
     try {
       const result = await searchGrammarRule(ruleQuery);
+      if (result.includes('الانتظار') || result.includes('ضغط')) {
+        setCooldown(15);
+      }
       setRuleResult(result);
     } catch (error) {
       console.error(error);
@@ -262,9 +286,14 @@ export default function App() {
 
   const handlePoetryAnalyze = async () => {
     if (!poetryQuery.trim()) return;
+    if (cooldown > 0) return;
+    
     setPoetryLoading(true);
     try {
       const result = await analyzePoetry(poetryQuery);
+      if (result.includes('الانتظار') || result.includes('ضغط')) {
+        setCooldown(15);
+      }
       setPoetryResult(result);
     } catch (error) {
       console.error(error);
@@ -394,10 +423,12 @@ export default function App() {
                   )}
                   <button
                     onClick={handleAnalyze}
-                    disabled={loading}
-                    className="bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 transition-colors min-w-[200px]"
+                    disabled={loading || cooldown > 0}
+                    className={`text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors min-w-[200px] ${cooldown > 0 ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   >
-                    {loading ? (
+                    {cooldown > 0 ? (
+                      <span className="text-sm font-bold">يرجى الانتظار {cooldown} ثانية...</span>
+                    ) : loading ? (
                       <>
                         <Loader2 className="animate-spin" />
                         <span className="text-sm">{loadingMessage}</span>
@@ -410,8 +441,11 @@ export default function App() {
                     )}
                   </button>
                   {errorMessage && (
-                    <div className="p-4 bg-red-100 text-red-700 border border-red-300 rounded-xl mt-2">
-                      {errorMessage}
+                    <div className="p-4 bg-red-100 text-red-700 border border-red-300 rounded-xl mt-2 flex items-center justify-between">
+                      <span>{errorMessage}</span>
+                      {cooldown > 0 && (
+                        <span className="font-bold text-xl bg-red-200 px-3 py-1 rounded-lg">{cooldown}</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -494,16 +528,27 @@ export default function App() {
                   />
                   <button
                     onClick={handleSearchRule}
-                    disabled={ruleLoading}
-                    className="shrink-0 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 transition-colors"
+                    disabled={ruleLoading || cooldown > 0}
+                    className={`shrink-0 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${cooldown > 0 ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   >
-                    {ruleLoading ? <Loader2 className="animate-spin" /> : <BookOpenText />}
-                    بحث
+                    {cooldown > 0 ? (
+                      <span>انتظر {cooldown} ثانية</span>
+                    ) : ruleLoading ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <>
+                        <BookOpenText />
+                        بحث
+                      </>
+                    )}
                   </button>
                 </div>
                 {ruleResult && (
-                  <div className="p-6 bg-white rounded-xl border border-stone-200 text-stone-800 leading-relaxed whitespace-pre-line">
+                  <div className="p-6 bg-white rounded-xl border border-stone-200 text-stone-800 leading-relaxed whitespace-pre-line relative">
                     {ruleResult}
+                    {cooldown > 0 && ruleResult.includes('ضغط') && (
+                      <div className="absolute top-4 left-4 font-bold text-xl bg-red-100 text-red-600 px-3 py-1 rounded-lg">{cooldown}</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -520,16 +565,27 @@ export default function App() {
                   />
                   <button
                     onClick={handlePoetryAnalyze}
-                    disabled={poetryLoading}
-                    className="shrink-0 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 flex flex-col items-center justify-center gap-2 transition-colors min-w-[120px]"
+                    disabled={poetryLoading || cooldown > 0}
+                    className={`shrink-0 text-white px-6 py-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors min-w-[120px] ${cooldown > 0 ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   >
-                    {poetryLoading ? <Loader2 className="animate-spin" /> : <BookOpenText />}
-                    تحليل
+                    {cooldown > 0 ? (
+                      <span>انتظر {cooldown}ث</span>
+                    ) : poetryLoading ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <>
+                        <BookOpenText />
+                        تحليل
+                      </>
+                    )}
                   </button>
                 </div>
                 {poetryResult && (
-                  <div className="p-6 bg-white rounded-xl border border-stone-200 text-stone-800 leading-relaxed whitespace-pre-line">
+                  <div className="p-6 bg-white rounded-xl border border-stone-200 text-stone-800 leading-relaxed whitespace-pre-line relative">
                     {poetryResult}
+                    {cooldown > 0 && poetryResult.includes('ضغط') && (
+                      <div className="absolute top-4 left-4 font-bold text-xl bg-red-100 text-red-600 px-3 py-1 rounded-lg">{cooldown}</div>
+                    )}
                   </div>
                 )}
               </div>
