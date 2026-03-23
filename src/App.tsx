@@ -7,7 +7,6 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff } from 'lucide-react';
 import { analyzeSentence, AnalyzedWord, searchGrammarRule } from './services/geminiService';
-import Auth from './components/Auth';
 
 const categoryColors: Record<AnalyzedWord['category'] | 'جملة', string> = {
   'فعل': 'text-red-600',
@@ -85,7 +84,6 @@ function Splash({ onComplete }: { onComplete: () => void }) {
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isRegistered'));
   const [sentence, setSentence] = useState('');
   const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert'>('full');
   const [displayMode, setDisplayMode] = useState<'table' | 'separated'>('table');
@@ -241,10 +239,9 @@ export default function App() {
     <>
       <AnimatePresence>
         {showSplash && <Splash onComplete={() => setShowSplash(false)} />}
-        {!showSplash && !isLoggedIn && <Auth onLoginSuccess={() => setIsLoggedIn(true)} />}
       </AnimatePresence>
       
-      {!showSplash && isLoggedIn && (
+      {!showSplash && (
         <div className="min-h-screen bg-stone-100 p-4 md:p-8 font-sans" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
