@@ -19,7 +19,7 @@ export interface AnalyzedWord {
   analysis: string;
 }
 
-export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert', targetWords?: string, image?: string) {
+export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert', targetWords?: string, image?: string, retryCount = 0): Promise<AnalyzedWord[]> {
   let prompt = '';
   if (mode === 'full') {
     prompt = `قم بإعراب الجملة التالية إعراباً تفصيلياً، مع التشكيل الكامل لكل كلمة: "${sentence}".`;
@@ -51,33 +51,49 @@ export async function analyzeSentence(sentence: string, mode: 'full' | 'partial'
   contents.push({ text: prompt });
 
   const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: { parts: contents },
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            word: { type: Type.STRING, description: "الكلمة أو الجملة" },
-            category: { 
-              type: Type.STRING, 
-              enum: ['فعل', 'اسم', 'مرفوع', 'منصوب', 'مجزوم', 'مجرور', 'أخرى', 'جملة', 'استخراج', 'منادى', 'تحويل'] 
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: { parts: contents },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              word: { type: Type.STRING, description: "الكلمة أو الجملة" },
+              category: { 
+                type: Type.STRING, 
+                enum: ['فعل', 'اسم', 'مرفوع', 'منصوب', 'مجزوم', 'مجرور', 'أخرى', 'جملة', 'استخراج', 'منادى', 'تحويل'] 
+              },
+              analysis: { type: Type.STRING, description: "الإعراب أو الموقع الإعرابي" }
             },
-            analysis: { type: Type.STRING, description: "الإعراب أو الموقع الإعرابي" }
-          },
-          required: ['word', 'category', 'analysis']
+            required: ['word', 'category', 'analysis']
+          }
         }
       }
+    });
+    
+    return JSON.parse(response.text || '[]') as AnalyzedWord[];
+  } catch (error: any) {
+    console.error("Gemini API Error:", error);
+    const errorMessage = error.message || String(error);
+    
+    if (errorMessage.includes("500") || errorMessage.includes("Internal error") || errorMessage.includes("503")) {
+      if (retryCount < 2) {
+        console.log(`Retrying API call (attempt ${retryCount + 1})...`);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        return analyzeSentence(sentence, mode, targetWords, image, retryCount + 1);
+      }
+      throw new Error("عذراً، هناك ضغط حالياً على خوادم الذكاء الاصطناعي. يرجى المحاولة مرة أخرى بعد قليل.");
     }
-  });
-  
-  return JSON.parse(response.text || '[]') as AnalyzedWord[];
+    
+    throw new Error("حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.");
+  }
 }
 
-export async function searchGrammarRule(ruleName: string) {
+export async function searchGrammarRule(ruleName: string, retryCount = 0): Promise<string> {
   const prompt = `اشرح قاعدة "${ruleName}" في النحو العربي بإيجاز.
   يجب أن يتضمن الشرح:
   1. تعريف القاعدة.
@@ -87,10 +103,60 @@ export async function searchGrammarRule(ruleName: string) {
   صغ الإجابة بشكل منظم وواضح.`;
 
   const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-  });
-  
-  return response.text || 'عذراً، لم أتمكن من العثور على شرح لهذه القاعدة.';
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+    
+    return response.text || 'عذراً، لم أتمكن من العثور على شرح لهذه القاعدة.';
+  } catch (error: any) {
+    console.error("Gemini API Error:", error);
+    const errorMessage = error.message || String(error);
+    
+    if (errorMessage.includes("500") || errorMessage.includes("Internal error") || errorMessage.includes("503")) {
+      if (retryCount < 2) {
+        console.log(`Retrying API call (attempt ${retryCount + 1})...`);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        return searchGrammarRule(ruleName, retryCount + 1);
+      }
+      return "عذراً، هناك ضغط حالياً على خوادم الذكاء الاصطناعي. يرجى المحاولة مرة أخرى بعد قليل.";
+    }
+    
+    return "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.";
+  }
+}
+
+export async function analyzePoetry(verse: string, retryCount = 0): Promise<string> {
+  const prompt = `قم بتحليل وشرح البيت الشعري التالي تحليلاً أدبياً ولغوياً: "${verse}".
+  يجب أن يتضمن التحليل:
+  1. شرح المعنى الإجمالي للبيت.
+  2. الصور الجمالية والبلاغية (إن وجدت).
+  3. إعراب أهم الكلمات أو الجمل في البيت.
+  4. البحر الشعري (إن أمكن).
+  صغ الإجابة بشكل منظم وواضح.`;
+
+  const ai = getAI();
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+    
+    return response.text || 'عذراً، لم أتمكن من تحليل هذا البيت.';
+  } catch (error: any) {
+    console.error("Gemini API Error:", error);
+    const errorMessage = error.message || String(error);
+    
+    if (errorMessage.includes("500") || errorMessage.includes("Internal error") || errorMessage.includes("503")) {
+      if (retryCount < 2) {
+        console.log(`Retrying API call (attempt ${retryCount + 1})...`);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        return analyzePoetry(verse, retryCount + 1);
+      }
+      return "عذراً، هناك ضغط حالياً على خوادم الذكاء الاصطناعي. يرجى المحاولة مرة أخرى بعد قليل.";
+    }
+    
+    return "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.";
+  }
 }

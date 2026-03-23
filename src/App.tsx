@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff } from 'lucide-react';
-import { analyzeSentence, AnalyzedWord, searchGrammarRule } from './services/geminiService';
+import { analyzeSentence, AnalyzedWord, searchGrammarRule, analyzePoetry } from './services/geminiService';
 
 const categoryColors: Record<AnalyzedWord['category'] | 'جملة', string> = {
   'فعل': 'text-red-600',
@@ -82,6 +82,14 @@ function Splash({ onComplete }: { onComplete: () => void }) {
   );
 }
 
+const loadingMessages = [
+  "جاري تحليل الجملة... ⏳",
+  "جاري استخراج القواعد النحوية... 🔍",
+  "جاري تحديد المواقع الإعرابية... 📍",
+  "جاري صياغة الإعراب التفصيلي... ✍️",
+  "نضع اللمسات الأخيرة... ✨"
+];
+
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [sentence, setSentence] = useState('');
@@ -90,12 +98,16 @@ export default function App() {
   const [targetWords, setTargetWords] = useState('');
   const [result, setResult] = useState<AnalyzedWord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
   const [fontSize, setFontSize] = useState(16);
   
-  const [activeTab, setActiveTab] = useState<'parser' | 'rules'>('parser');
+  const [activeTab, setActiveTab] = useState<'parser' | 'rules' | 'poetry'>('parser');
   const [ruleQuery, setRuleQuery] = useState('');
   const [ruleResult, setRuleResult] = useState('');
   const [ruleLoading, setRuleLoading] = useState(false);
+  const [poetryQuery, setPoetryQuery] = useState('');
+  const [poetryResult, setPoetryResult] = useState('');
+  const [poetryLoading, setPoetryLoading] = useState(false);
   const [image, setImage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [savedResults, setSavedResults] = useState<{id: number, sentence: string, result: AnalyzedWord[]}[]>([]);
@@ -103,6 +115,19 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (loading) {
+      let i = 0;
+      setLoadingMessage(loadingMessages[0]);
+      interval = setInterval(() => {
+        i = (i + 1) % loadingMessages.length;
+        setLoadingMessage(loadingMessages[i]);
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   useEffect(() => {
     const saved = localStorage.getItem('savedResults');
@@ -235,6 +260,20 @@ export default function App() {
     }
   };
 
+  const handlePoetryAnalyze = async () => {
+    if (!poetryQuery.trim()) return;
+    setPoetryLoading(true);
+    try {
+      const result = await analyzePoetry(poetryQuery);
+      setPoetryResult(result);
+    } catch (error) {
+      console.error(error);
+      setPoetryResult('حدث خطأ أثناء تحليل البيت.');
+    } finally {
+      setPoetryLoading(false);
+    }
+  };
+
   return (
     <>
       <AnimatePresence>
@@ -269,9 +308,15 @@ export default function App() {
               >
                 البحث عن قاعدة
               </button>
+              <button 
+                onClick={() => setActiveTab('poetry')}
+                className={`pb-2 px-4 ${activeTab === 'poetry' ? 'border-b-2 border-emerald-600 font-bold' : 'text-stone-500'}`}
+              >
+                أبيات شعرية
+              </button>
             </div>
             
-            {activeTab === 'parser' ? (
+            {activeTab === 'parser' && (
               <>
                 <div className="flex flex-wrap gap-4 mb-4">
                   <label className="flex items-center gap-2">
@@ -316,25 +361,26 @@ export default function App() {
                 </div>
 
                 <div className="flex flex-col gap-2 mb-6">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
+                  <div className="relative">
+                    <textarea
                       value={sentence}
                       onChange={(e) => setSentence(e.target.value)}
                       placeholder={mode === 'extract' ? "أدخل القطعة أو النص هنا..." : mode === 'vocative' ? "أدخل أسلوب النداء هنا..." : mode === 'convert' ? "أدخل الجملة الأصلية هنا..." : "أدخل الجملة..."}
-                      className="flex-grow p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full min-h-[120px] p-4 pb-14 border border-stone-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-y"
                     />
-                    <button
-                      onClick={toggleListening}
-                      className={`p-3 rounded-xl transition-colors ${isListening ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-stone-200 hover:bg-stone-300'}`}
-                      title="التحدث بالصوت"
-                    >
-                      {isListening ? <MicOff /> : <Mic />}
-                    </button>
-                    <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-                    <button onClick={() => fileInputRef.current?.click()} className="bg-stone-200 p-3 rounded-xl hover:bg-stone-300" title="إرفاق صورة">
-                      <Camera />
-                    </button>
+                    <div className="absolute bottom-3 left-3 flex gap-2">
+                      <button
+                        onClick={toggleListening}
+                        className={`p-2 rounded-lg transition-colors ${isListening ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-stone-100 hover:bg-stone-200 text-stone-600'}`}
+                        title="التحدث بالصوت"
+                      >
+                        {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+                      </button>
+                      <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                      <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600" title="إرفاق صورة">
+                        <Camera size={20} />
+                      </button>
+                    </div>
                   </div>
                   {image && <img src={image} alt="uploaded" className="max-h-40 rounded-xl" />}
                   {(mode === 'partial' || mode === 'extract' || mode === 'convert') && (
@@ -349,10 +395,19 @@ export default function App() {
                   <button
                     onClick={handleAnalyze}
                     disabled={loading}
-                    className="bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 transition-colors"
+                    className="bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 transition-colors min-w-[200px]"
                   >
-                    {loading ? <Loader2 className="animate-spin" /> : <Search />}
-                    إعراب
+                    {loading ? (
+                      <>
+                        <Loader2 className="animate-spin" />
+                        <span className="text-sm">{loadingMessage}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search />
+                        إعراب
+                      </>
+                    )}
                   </button>
                   {errorMessage && (
                     <div className="p-4 bg-red-100 text-red-700 border border-red-300 rounded-xl mt-2">
@@ -425,7 +480,9 @@ export default function App() {
                   </div>
                 )}
               </>
-            ) : (
+            )}
+
+            {activeTab === 'rules' && (
               <div className="flex flex-col gap-4">
                 <div className="flex gap-2">
                   <input
@@ -433,12 +490,12 @@ export default function App() {
                     value={ruleQuery}
                     onChange={(e) => setRuleQuery(e.target.value)}
                     placeholder="أدخل اسم القاعدة (مثال: كان وأخواتها)..."
-                    className="flex-grow p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="flex-grow min-w-0 p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                   <button
                     onClick={handleSearchRule}
                     disabled={ruleLoading}
-                    className="bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 transition-colors"
+                    className="shrink-0 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 transition-colors"
                   >
                     {ruleLoading ? <Loader2 className="animate-spin" /> : <BookOpenText />}
                     بحث
@@ -451,18 +508,32 @@ export default function App() {
                 )}
               </div>
             )}
-            
-            <div className="mt-auto pt-6 border-t border-stone-200">
-              <button 
-                onClick={() => {
-                  localStorage.removeItem('isRegistered');
-                  setIsLoggedIn(false);
-                }}
-                className="w-full bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
-              >
-                تسجيل الخروج
-              </button>
-            </div>
+
+            {activeTab === 'poetry' && (
+              <div className="flex flex-col gap-4">
+                <div className="flex gap-2">
+                  <textarea
+                    value={poetryQuery}
+                    onChange={(e) => setPoetryQuery(e.target.value)}
+                    placeholder="أدخل البيت الشعري هنا (مثال: الخيل والليل والبيداء تعرفني...)"
+                    className="flex-grow min-w-0 p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-y min-h-[120px]"
+                  />
+                  <button
+                    onClick={handlePoetryAnalyze}
+                    disabled={poetryLoading}
+                    className="shrink-0 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 flex flex-col items-center justify-center gap-2 transition-colors min-w-[120px]"
+                  >
+                    {poetryLoading ? <Loader2 className="animate-spin" /> : <BookOpenText />}
+                    تحليل
+                  </button>
+                </div>
+                {poetryResult && (
+                  <div className="p-6 bg-white rounded-xl border border-stone-200 text-stone-800 leading-relaxed whitespace-pre-line">
+                    {poetryResult}
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         </div>
       )}
