@@ -44,9 +44,10 @@ function Splash({ onComplete }: { onComplete: () => void }) {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3, duration: 0.8 }}
-          className="text-5xl md:text-7xl font-bold text-amber-400 mb-6 text-center font-serif drop-shadow-lg"
+          className="text-5xl md:text-7xl font-bold text-amber-400 mb-6 text-center font-serif drop-shadow-lg flex flex-col items-center gap-4"
         >
-          معرب الجمل العربية
+          <span>معرب الجمل العربية</span>
+          <span className="text-sm md:text-base bg-amber-600/30 text-amber-200 px-4 py-1 rounded-full font-sans tracking-wider border border-amber-500/30">تحديث رقم 100</span>
         </motion.h1>
         
         <motion.p 
@@ -317,8 +318,11 @@ export default function App() {
             className="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-md flex flex-col min-h-[80vh]"
           >
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-3xl font-bold text-stone-900 text-center flex-grow">معرب الجمل العربية</h1>
-              <div className="flex gap-2">
+              <div className="flex-grow flex flex-col items-center justify-center">
+                <h1 className="text-3xl font-bold text-stone-900 text-center">معرب الجمل العربية</h1>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full mt-2">تحديث رقم 100</span>
+              </div>
+              <div className="flex gap-2 shrink-0">
                 <button onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-200 p-2 rounded-lg">+</button>
                 <button onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-200 p-2 rounded-lg">-</button>
               </div>
