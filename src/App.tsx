@@ -257,8 +257,8 @@ export default function App() {
       console.error(error);
       const msg = error.message || "حدث خطأ غير متوقع أثناء الإعراب. تأكد من إعداد مفتاح API بشكل صحيح.";
       setErrorMessage(msg);
-      if (msg.includes('الانتظار') || msg.includes('ضغط')) {
-        setCooldown(15); // 15 seconds cooldown
+      if (msg.includes('الانتظار') || msg.includes('تجاوز') || msg.includes('ضغط')) {
+        setCooldown(30); // 30 seconds cooldown
       }
       setResult([]);
     } finally {
@@ -273,8 +273,8 @@ export default function App() {
     setRuleLoading(true);
     try {
       const result = await searchGrammarRule(ruleQuery);
-      if (result.includes('الانتظار') || result.includes('ضغط')) {
-        setCooldown(15);
+      if (result.includes('الانتظار') || result.includes('تجاوز') || result.includes('ضغط')) {
+        setCooldown(30);
       }
       setRuleResult(result);
     } catch (error) {
@@ -292,8 +292,8 @@ export default function App() {
     setPoetryLoading(true);
     try {
       const result = await analyzePoetry(poetryQuery);
-      if (result.includes('الانتظار') || result.includes('ضغط')) {
-        setCooldown(15);
+      if (result.includes('الانتظار') || result.includes('تجاوز') || result.includes('ضغط')) {
+        setCooldown(30);
       }
       setPoetryResult(result);
     } catch (error) {
