@@ -1,6 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+let aiInstance: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("عذراً، مفتاح API غير متوفر. يرجى إضافة GEMINI_API_KEY في إعدادات البيئة (Environment Variables) في Vercel.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+}
 
 export interface AnalyzedWord {
   word: string;
@@ -39,6 +50,7 @@ export async function analyzeSentence(sentence: string, mode: 'full' | 'partial'
   }
   contents.push({ text: prompt });
 
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: { parts: contents },
@@ -74,6 +86,7 @@ export async function searchGrammarRule(ruleName: string) {
   4. الشواذ إن وجدت.
   صغ الإجابة بشكل منظم وواضح.`;
 
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: prompt,
