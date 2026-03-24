@@ -3,11 +3,37 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff } from 'lucide-react';
 import { analyzeSentence, searchGrammarRule, analyzePoetry } from './services/geminiService';
 import { AnalyzedWord } from './types';
+
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-stone-100 p-4" dir="rtl">
+          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">عذراً، حدث خطأ غير متوقع!</h2>
+            <p className="text-stone-600 mb-6">واجه التطبيق مشكلة أثناء عرض البيانات. يرجى تحديث الصفحة والمحاولة مرة أخرى.</p>
+            <button onClick={() => window.location.reload()} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700">
+              تحديث الصفحة
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const categoryColors: Record<AnalyzedWord['category'] | 'جملة', string> = {
   'فعل': 'text-red-600',
@@ -259,7 +285,21 @@ export default function App() {
     setErrorMessage(null);
     try {
       const base64Image = image ? image.split(',')[1] : undefined;
-      const analysis = await analyzeSentence(sentence, mode, targetWords, base64Image);
+      let analysis = await analyzeSentence(sentence, mode, targetWords, base64Image);
+      
+      // تأمين البيانات لمنع الشاشة البيضاء
+      if (!Array.isArray(analysis)) {
+        console.error("API did not return an array:", analysis);
+        throw new Error("استجابة غير صالحة: البيانات المستلمة ليست مصفوفة.");
+      }
+      
+      // تصفية أي عناصر فارغة أو غير صالحة
+      analysis = analysis.filter(item => item && typeof item === 'object' && item.word);
+      
+      if (analysis.length === 0) {
+        throw new Error("لم يتم العثور على نتائج قابلة للعرض.");
+      }
+
       setResult(analysis);
       setCooldown(3); // فترة راحة قصيرة لتنظيم الطلبات
     } catch (error: any) {
@@ -318,7 +358,7 @@ export default function App() {
   };
 
   return (
-    <>
+    <ErrorBoundary>
       <AnimatePresence>
         {showSplash && <Splash onComplete={() => setShowSplash(false)} />}
       </AnimatePresence>
@@ -616,6 +656,6 @@ export default function App() {
           </motion.div>
         </div>
       )}
-    </>
+    </ErrorBoundary>
   );
 }
