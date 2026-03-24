@@ -6,7 +6,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff } from 'lucide-react';
-import { analyzeSentence, AnalyzedWord, searchGrammarRule, analyzePoetry } from './services/geminiService';
+import { analyzeSentence, searchGrammarRule, analyzePoetry } from './services/geminiService';
+import { AnalyzedWord } from './types';
 
 const categoryColors: Record<AnalyzedWord['category'] | 'جملة', string> = {
   'فعل': 'text-red-600',
@@ -148,46 +149,53 @@ export default function App() {
     if (saved) {
       setSavedResults(JSON.parse(saved));
     }
-
-    // Initialize Speech Recognition
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = 'ar-SA';
-
-      recognition.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0])
-          .map((result: any) => result.transcript)
-          .join('');
-        setSentence(transcript);
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error', event.error);
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
-    }
   }, []);
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert('عذراً، متصفحك لا يدعم ميزة التعرف على الصوت.');
-      return;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = 'ar-SA';
+
+        recognition.onresult = (event: any) => {
+          const transcript = Array.from(event.results)
+            .map((result: any) => result[0])
+            .map((result: any) => result.transcript)
+            .join('');
+          setSentence(transcript);
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error', event.error);
+          setIsListening(false);
+          if (event.error === 'not-allowed') {
+            alert('يرجى السماح بالوصول إلى الميكروفون لاستخدام ميزة الإدخال الصوتي.');
+          }
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+      } else {
+        alert('عذراً، متصفحك لا يدعم ميزة التعرف على الصوت.');
+        return;
+      }
     }
+
     if (isListening) {
       recognitionRef.current.stop();
     } else {
-      recognitionRef.current.start();
-      setIsListening(true);
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error('Failed to start recognition', e);
+      }
     }
   };
 

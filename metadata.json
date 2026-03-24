@@ -1,5 +1,5 @@
 {
   "name": "Arabic Grammar Parser",
   "description": "تطبيق لتحليل وإعراب الجمل العربية باستخدام الذكاء الاصطناعي.",
-  "requestFramePermissions": ["microphone"]
+  "requestFramePermissions": []
 }
