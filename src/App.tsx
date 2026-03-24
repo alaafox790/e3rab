@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff } from 'lucide-react';
+import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff, AlignLeft, TextCursor, MapPin, Filter, Megaphone, RefreshCw, Trash2, Table, AlignJustify, StickyNote, Key } from 'lucide-react';
 import { analyzeSentence, searchGrammarRule, analyzePoetry } from './services/geminiService';
 import { AnalyzedWord } from './types';
 
@@ -35,7 +35,7 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
-const categoryColors: Record<AnalyzedWord['category'] | 'جملة', string> = {
+const categoryColors: Record<AnalyzedWord['category'] | 'جملة' | 'ملاحظات', string> = {
   'فعل': 'text-red-600',
   'اسم': 'text-blue-600',
   'مرفوع': 'text-green-700',
@@ -47,6 +47,7 @@ const categoryColors: Record<AnalyzedWord['category'] | 'جملة', string> = {
   'استخراج': 'text-indigo-600',
   'منادى': 'text-pink-600',
   'تحويل': 'text-cyan-600',
+  'ملاحظات': 'text-indigo-500',
 };
 
 function Splash({ onComplete }: { onComplete: () => void }) {
@@ -77,14 +78,16 @@ function Splash({ onComplete }: { onComplete: () => void }) {
           <span className="text-sm md:text-base bg-amber-600/30 text-amber-200 px-4 py-1 rounded-full font-sans tracking-wider border border-amber-500/30">تحديث رقم 101</span>
         </motion.h1>
         
-        <motion.p 
+        <motion.div 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.8 }}
-          className="text-xl md:text-2xl text-emerald-100 mb-12 text-center max-w-lg leading-relaxed font-light"
+          className="text-xl md:text-2xl text-emerald-100 mb-12 text-center max-w-lg leading-relaxed font-light flex flex-col gap-2"
         >
-          الأداة الذكية لإعراب النصوص العربية بدقة وسهولة
-        </motion.p>
+          <span className="font-bold text-white drop-shadow-md">مديرية التربية والتعليم بسوهاج</span>
+          <span className="text-amber-200">إهداء الدكتور أسامة مصطفى</span>
+          <span className="text-lg text-emerald-200/90">موجه عام اللغة العربية بالديوان</span>
+        </motion.div>
       </div>
       
       <motion.div 
@@ -121,7 +124,7 @@ const loadingMessages = [
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [sentence, setSentence] = useState('');
-  const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert'>('full');
+  const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes'>('full');
   const [displayMode, setDisplayMode] = useState<'table' | 'separated'>('table');
   const [targetWords, setTargetWords] = useState('');
   const [result, setResult] = useState<AnalyzedWord[]>([]);
@@ -138,24 +141,10 @@ export default function App() {
   const [poetryLoading, setPoetryLoading] = useState(false);
   const [image, setImage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [savedResults, setSavedResults] = useState<{id: number, sentence: string, result: AnalyzedWord[]}[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (cooldown > 0) {
-      interval = setInterval(() => {
-        setCooldown(c => c - 1);
-      }, 1000);
-    } else if (cooldown === 0 && errorMessage?.includes('الانتظار')) {
-      setErrorMessage(null);
-    }
-    return () => clearInterval(interval);
-  }, [cooldown, errorMessage]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -169,13 +158,6 @@ export default function App() {
     }
     return () => clearInterval(interval);
   }, [loading]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('savedResults');
-    if (saved) {
-      setSavedResults(JSON.parse(saved));
-    }
-  }, []);
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
@@ -225,18 +207,6 @@ export default function App() {
     }
   };
 
-  const handleSave = () => {
-    const newSaved = [...savedResults, { id: Date.now(), sentence, result }];
-    setSavedResults(newSaved);
-    localStorage.setItem('savedResults', JSON.stringify(newSaved));
-  };
-
-  const handleDeleteSaved = (id: number) => {
-    const newSaved = savedResults.filter(r => r.id !== id);
-    setSavedResults(newSaved);
-    localStorage.setItem('savedResults', JSON.stringify(newSaved));
-  };
-
   const handleClear = () => {
     setResult([]);
     setSentence('');
@@ -247,6 +217,19 @@ export default function App() {
     setRuleResult('');
     setImage(null);
     setErrorMessage(null);
+  };
+
+  const handleSelectApiKey = async () => {
+    try {
+      if (window.aistudio && window.aistudio.openSelectKey) {
+        await window.aistudio.openSelectKey();
+        alert("تم تحديث مفتاح API بنجاح! يمكنك الآن الاستمرار في الاستخدام بدون قيود.");
+      } else {
+        alert("عذراً، هذه الميزة غير متوفرة في هذه البيئة.");
+      }
+    } catch (error) {
+      console.error("Error selecting API key:", error);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -279,7 +262,6 @@ export default function App() {
 
   const handleAnalyze = async () => {
     if (!sentence.trim() && !image) return;
-    if (cooldown > 0) return;
     
     setLoading(true);
     setErrorMessage(null);
@@ -301,14 +283,10 @@ export default function App() {
       }
 
       setResult(analysis);
-      setCooldown(3); // فترة راحة قصيرة لتنظيم الطلبات
     } catch (error: any) {
       console.error(error);
       const msg = error.message || "حدث خطأ غير متوقع أثناء الإعراب. تأكد من إعداد مفتاح API بشكل صحيح.";
       setErrorMessage(msg);
-      if (msg.includes('الانتظار') || msg.includes('تجاوز') || msg.includes('ضغط')) {
-        setCooldown(30); // 30 seconds cooldown
-      }
       setResult([]);
     } finally {
       setLoading(false);
@@ -317,16 +295,10 @@ export default function App() {
 
   const handleSearchRule = async () => {
     if (!ruleQuery.trim()) return;
-    if (cooldown > 0) return;
     
     setRuleLoading(true);
     try {
       const result = await searchGrammarRule(ruleQuery);
-      if (result.includes('الانتظار') || result.includes('تجاوز') || result.includes('ضغط')) {
-        setCooldown(30);
-      } else {
-        setCooldown(3); // فترة راحة قصيرة لتنظيم الطلبات
-      }
       setRuleResult(result);
     } catch (error) {
       console.error(error);
@@ -338,16 +310,10 @@ export default function App() {
 
   const handlePoetryAnalyze = async () => {
     if (!poetryQuery.trim()) return;
-    if (cooldown > 0) return;
     
     setPoetryLoading(true);
     try {
       const result = await analyzePoetry(poetryQuery);
-      if (result.includes('الانتظار') || result.includes('تجاوز') || result.includes('ضغط')) {
-        setCooldown(30);
-      } else {
-        setCooldown(3); // فترة راحة قصيرة لتنظيم الطلبات
-      }
       setPoetryResult(result);
     } catch (error) {
       console.error(error);
@@ -375,9 +341,18 @@ export default function App() {
                 <h1 className="text-3xl font-bold text-stone-900 text-center">معرب الجمل العربية</h1>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full mt-2">تحديث رقم 101</span>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <button onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-200 p-2 rounded-lg">+</button>
-                <button onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-200 p-2 rounded-lg">-</button>
+              <div className="flex flex-col gap-2 shrink-0 items-end">
+                <button 
+                  onClick={handleSelectApiKey} 
+                  className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded hover:bg-amber-200 transition-colors mb-1"
+                  title="استخدام مفتاح API خاص لتجاوز حدود الاستخدام"
+                >
+                  <Key size={14} /> إضافة مفتاح API خاص
+                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-200 p-2 rounded-lg">+</button>
+                  <button onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-200 p-2 rounded-lg">-</button>
+                </div>
               </div>
             </div>
 
@@ -404,46 +379,85 @@ export default function App() {
             
             {activeTab === 'parser' && (
               <>
-                <div className="flex flex-wrap gap-4 mb-4">
-                  <label className="flex items-center gap-2">
-                    <input type="radio" checked={mode === 'full'} onChange={() => setMode('full')} />
-                    إعراب الجملة كاملة
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="radio" checked={mode === 'partial'} onChange={() => setMode('partial')} />
-                    إعراب كلمات محددة
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="radio" checked={mode === 'sentence-position'} onChange={() => setMode('sentence-position')} />
-                    الموقع الإعرابي للجمل
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="radio" checked={mode === 'extract'} onChange={() => setMode('extract')} />
-                    استخراج (صرف/نحو)
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="radio" checked={mode === 'vocative'} onChange={() => setMode('vocative')} />
-                    نوع المنادى
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="radio" checked={mode === 'convert'} onChange={() => setMode('convert')} />
-                    تحويل نحوي
-                  </label>
-                  <label className="flex items-center gap-2 text-red-600">
-                    <input type="radio" checked={false} onChange={handleClear} />
-                    مسح النتائج وبدء جديد
-                  </label>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3 mb-8">
+                  <button
+                    onClick={() => setMode('full')}
+                    className={`flex flex-col items-center justify-center gap-2 p-3 md:p-4 rounded-xl transition-all duration-300 ${mode === 'full' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20 scale-[1.02] border border-emerald-400' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200 hover:shadow-sm'}`}
+                  >
+                    <AlignLeft size={28} className={mode === 'full' ? 'text-white' : 'text-emerald-500'} /> 
+                    <span className="font-semibold text-xs md:text-sm text-center">إعراب كامل</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setMode('partial')}
+                    className={`flex flex-col items-center justify-center gap-2 p-3 md:p-4 rounded-xl transition-all duration-300 ${mode === 'partial' ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20 scale-[1.02] border border-blue-400' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200 hover:shadow-sm'}`}
+                  >
+                    <TextCursor size={28} className={mode === 'partial' ? 'text-white' : 'text-blue-500'} /> 
+                    <span className="font-semibold text-xs md:text-sm text-center">إعراب محدد</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setMode('sentence-position')}
+                    className={`flex flex-col items-center justify-center gap-2 p-3 md:p-4 rounded-xl transition-all duration-300 ${mode === 'sentence-position' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20 scale-[1.02] border border-amber-400' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200 hover:shadow-sm'}`}
+                  >
+                    <MapPin size={28} className={mode === 'sentence-position' ? 'text-white' : 'text-amber-500'} /> 
+                    <span className="font-semibold text-xs md:text-sm text-center">موقع الجمل</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setMode('extract')}
+                    className={`flex flex-col items-center justify-center gap-2 p-3 md:p-4 rounded-xl transition-all duration-300 ${mode === 'extract' ? 'bg-purple-500 text-white shadow-md shadow-purple-500/20 scale-[1.02] border border-purple-400' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200 hover:shadow-sm'}`}
+                  >
+                    <Filter size={28} className={mode === 'extract' ? 'text-white' : 'text-purple-500'} /> 
+                    <span className="font-semibold text-xs md:text-sm text-center">استخراج</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setMode('vocative')}
+                    className={`flex flex-col items-center justify-center gap-2 p-3 md:p-4 rounded-xl transition-all duration-300 ${mode === 'vocative' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20 scale-[1.02] border border-rose-400' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200 hover:shadow-sm'}`}
+                  >
+                    <Megaphone size={28} className={mode === 'vocative' ? 'text-white' : 'text-rose-500'} /> 
+                    <span className="font-semibold text-xs md:text-sm text-center">نوع المنادى</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setMode('convert')}
+                    className={`flex flex-col items-center justify-center gap-2 p-3 md:p-4 rounded-xl transition-all duration-300 ${mode === 'convert' ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/20 scale-[1.02] border border-cyan-400' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200 hover:shadow-sm'}`}
+                  >
+                    <RefreshCw size={28} className={mode === 'convert' ? 'text-white' : 'text-cyan-500'} /> 
+                    <span className="font-semibold text-xs md:text-sm text-center">تحويل نحوي</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setMode('notes')}
+                    className={`flex flex-col items-center justify-center gap-2 p-3 md:p-4 rounded-xl transition-all duration-300 ${mode === 'notes' ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20 scale-[1.02] border border-indigo-400' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200 hover:shadow-sm'}`}
+                  >
+                    <StickyNote size={28} className={mode === 'notes' ? 'text-white' : 'text-indigo-500'} /> 
+                    <span className="font-semibold text-xs md:text-sm text-center">ملاحظات</span>
+                  </button>
+                  
+                  <button
+                    onClick={handleClear}
+                    className="flex flex-col items-center justify-center gap-2 p-3 md:p-4 rounded-xl transition-all duration-300 bg-stone-100 text-red-500 hover:bg-red-50 hover:text-red-600 border border-stone-200 hover:border-red-200 hover:shadow-sm col-span-2 md:col-span-3 lg:col-span-4"
+                  >
+                    <Trash2 size={28} /> 
+                    <span className="font-semibold text-xs md:text-sm text-center">مسح وبدء جديد</span>
+                  </button>
                 </div>
 
-                <div className="flex flex-wrap gap-4 mb-4 p-3 bg-stone-50 rounded-xl">
-                  <label className="flex items-center gap-2">
-                    <input type="radio" checked={displayMode === 'table'} onChange={() => setDisplayMode('table')} />
-                    عرض كجدول
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="radio" checked={displayMode === 'separated'} onChange={() => setDisplayMode('separated')} />
-                    عرض بفواصل | |
-                  </label>
+                <div className="flex bg-stone-100 p-1 rounded-md w-fit mb-6">
+                  <button
+                    onClick={() => setDisplayMode('table')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-sm text-sm md:text-base transition-all ${displayMode === 'table' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-stone-500 hover:text-stone-700'}`}
+                  >
+                    <Table size={18} /> عرض كجدول
+                  </button>
+                  <button
+                    onClick={() => setDisplayMode('separated')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-sm text-sm md:text-base transition-all ${displayMode === 'separated' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-stone-500 hover:text-stone-700'}`}
+                  >
+                    <AlignJustify size={18} /> عرض بفواصل | |
+                  </button>
                 </div>
 
                 <div className="flex flex-col gap-2 mb-6">
@@ -451,7 +465,7 @@ export default function App() {
                     <textarea
                       value={sentence}
                       onChange={(e) => setSentence(e.target.value)}
-                      placeholder={mode === 'extract' ? "أدخل القطعة أو النص هنا..." : mode === 'vocative' ? "أدخل أسلوب النداء هنا..." : mode === 'convert' ? "أدخل الجملة الأصلية هنا..." : "أدخل الجملة..."}
+                      placeholder={mode === 'extract' ? "أدخل القطعة أو النص هنا..." : mode === 'vocative' ? "أدخل أسلوب النداء هنا..." : mode === 'convert' ? "أدخل الجملة الأصلية هنا..." : mode === 'notes' ? "أدخل النص لاستخراج الملاحظات النحوية..." : "أدخل الجملة..."}
                       className="w-full min-h-[120px] p-4 pb-14 border border-stone-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-y"
                     />
                     <div className="absolute bottom-3 left-3 flex gap-2">
@@ -469,25 +483,21 @@ export default function App() {
                     </div>
                   </div>
                   {image && <img src={image} alt="uploaded" className="max-h-40 rounded-xl" />}
-                  {(mode === 'partial' || mode === 'extract' || mode === 'convert') && (
+                  {(mode === 'partial' || mode === 'extract' || mode === 'convert' || mode === 'notes') && (
                     <input
                       type="text"
                       value={targetWords}
                       onChange={(e) => setTargetWords(e.target.value)}
-                      placeholder={mode === 'extract' ? "ما الذي تريد استخراجه؟ (مثال: اسم فاعل، صيغة مبالغة، ممنوع من الصرف...)" : mode === 'convert' ? "ما هو التحويل المطلوب؟ (مثال: حول الجملة الاسمية إلى فعلية، أو حول الحال المفرد إلى جملة)" : "أدخل الكلمات المراد إعرابها (مفصولة بفاصلة)..."}
+                      placeholder={mode === 'extract' ? "ما الذي تريد استخراجه؟ (مثال: اسم فاعل، صيغة مبالغة، ممنوع من الصرف...)" : mode === 'convert' ? "ما هو التحويل المطلوب؟ (مثال: حول الجملة الاسمية إلى فعلية، أو حول الحال المفرد إلى جملة)" : mode === 'notes' ? "أي ملاحظات محددة تبحث عنها؟ (اختياري)" : "أدخل الكلمات المراد إعرابها (مفصولة بفاصلة)..."}
                       className="p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                   )}
                   <button
                     onClick={handleAnalyze}
-                    disabled={loading || cooldown > 0}
-                    className={`text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors min-w-[200px] ${cooldown > 0 ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                    disabled={loading}
+                    className={`text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors min-w-[200px] ${loading ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   >
-                    {cooldown > 0 ? (
-                      <span className="text-sm font-bold">
-                        {errorMessage ? `يرجى الانتظار ${cooldown} ثانية...` : `جاهز بعد ${cooldown}ث...`}
-                      </span>
-                    ) : loading ? (
+                    {loading ? (
                       <>
                         <Loader2 className="animate-spin" />
                         <span className="text-sm">{loadingMessage}</span>
@@ -502,9 +512,6 @@ export default function App() {
                   {errorMessage && (
                     <div className="p-4 bg-red-100 text-red-700 border border-red-300 rounded-xl mt-2 flex items-center justify-between">
                       <span>{errorMessage}</span>
-                      {cooldown > 0 && (
-                        <span className="font-bold text-xl bg-red-200 px-3 py-1 rounded-lg">{cooldown}</span>
-                      )}
                     </div>
                   )}
                 </div>
@@ -519,10 +526,6 @@ export default function App() {
                       <button onClick={handleShare} className="bg-stone-200 px-3 py-1 rounded-lg flex items-center gap-1 text-sm">
                         <Share2 size={16} />
                         مشاركة
-                      </button>
-                      <button onClick={handleSave} className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg flex items-center gap-1 text-sm">
-                        <Check size={16} />
-                        حفظ النتيجة
                       </button>
                     </div>
                     {displayMode === 'table' ? (
@@ -557,21 +560,6 @@ export default function App() {
                     )}
                   </div>
                 )}
-
-                {savedResults.length > 0 && (
-                  <div className="mt-8">
-                    <h2 className="text-2xl font-bold mb-4">النتائج المحفوظة</h2>
-                    {savedResults.map(r => (
-                      <div key={r.id} className="bg-white p-4 rounded-xl border border-stone-200 mb-4 flex justify-between items-center">
-                        <div>
-                          <p className="font-bold">{r.sentence}</p>
-                          <p className="text-sm text-stone-500">{new Date(r.id).toLocaleString()}</p>
-                        </div>
-                        <button onClick={() => handleDeleteSaved(r.id)} className="text-red-500 hover:text-red-700">حذف</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </>
             )}
 
@@ -587,14 +575,10 @@ export default function App() {
                   />
                   <button
                     onClick={handleSearchRule}
-                    disabled={ruleLoading || cooldown > 0}
-                    className={`shrink-0 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${cooldown > 0 ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                    disabled={ruleLoading}
+                    className={`shrink-0 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${ruleLoading ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   >
-                    {cooldown > 0 ? (
-                      <span className="text-sm font-bold">
-                        {ruleResult.includes('ضغط') || ruleResult.includes('تجاوز') ? `انتظر ${cooldown}ث` : `جاهز بعد ${cooldown}ث`}
-                      </span>
-                    ) : ruleLoading ? (
+                    {ruleLoading ? (
                       <Loader2 className="animate-spin" />
                     ) : (
                       <>
@@ -607,9 +591,6 @@ export default function App() {
                 {ruleResult && (
                   <div className="p-6 bg-white rounded-xl border border-stone-200 text-stone-800 leading-relaxed whitespace-pre-line relative">
                     {ruleResult}
-                    {cooldown > 0 && ruleResult.includes('ضغط') && (
-                      <div className="absolute top-4 left-4 font-bold text-xl bg-red-100 text-red-600 px-3 py-1 rounded-lg">{cooldown}</div>
-                    )}
                   </div>
                 )}
               </div>
@@ -626,14 +607,10 @@ export default function App() {
                   />
                   <button
                     onClick={handlePoetryAnalyze}
-                    disabled={poetryLoading || cooldown > 0}
-                    className={`shrink-0 text-white px-6 py-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors min-w-[120px] ${cooldown > 0 ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                    disabled={poetryLoading}
+                    className={`shrink-0 text-white px-6 py-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors min-w-[120px] ${poetryLoading ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   >
-                    {cooldown > 0 ? (
-                      <span className="text-sm font-bold">
-                        {poetryResult.includes('ضغط') || poetryResult.includes('تجاوز') ? `انتظر ${cooldown}ث` : `جاهز بعد ${cooldown}ث`}
-                      </span>
-                    ) : poetryLoading ? (
+                    {poetryLoading ? (
                       <Loader2 className="animate-spin" />
                     ) : (
                       <>
@@ -646,9 +623,6 @@ export default function App() {
                 {poetryResult && (
                   <div className="p-6 bg-white rounded-xl border border-stone-200 text-stone-800 leading-relaxed whitespace-pre-line relative">
                     {poetryResult}
-                    {cooldown > 0 && poetryResult.includes('ضغط') && (
-                      <div className="absolute top-4 left-4 font-bold text-xl bg-red-100 text-red-600 px-3 py-1 rounded-lg">{cooldown}</div>
-                    )}
                   </div>
                 )}
               </div>

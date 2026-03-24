@@ -1,0 +1,105 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: saved_results
+    // Document ID: Auto-generated
+    // Fields:
+    //   - userId: string (required, immutable) - The ID of the user who saved the result
+    //   - sentence: string (required, max 2000 chars) - The original sentence
+    //   - mode: string (required, max 50 chars) - The analysis mode
+    //   - targetWords: string (optional, max 500 chars) - The target words
+    //   - result: string (required, max 10000 chars) - JSON stringified array of results
+    //   - createdAt: timestamp (required, immutable) - When the result was saved
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    // Check if the user is authenticated
+    function isAuthenticated() {
+       return request.auth != null;
+    }
+    
+    // Check if user owns the resource (for user-owned documents)
+    function isOwner(userId) {
+       return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if user is owner based on document's userId field
+    function isDocOwner() {
+       return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    // Verify UID hasn't been tampered with on create
+    function uidUnchanged() {
+       return !('userId' in request.resource.data) ||
+         request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Ensure uid field is not modified on update
+    function uidNotModified() {
+       return !('userId' in request.resource.data) ||
+         request.resource.data.userId == resource.data.userId;
+    }
+    
+    // Validate required fields exist
+    function hasRequiredFields(fields) {
+       return request.resource.data.keys().hasAll(fields);
+    }
+    
+    // Validate string length
+    function validStringLength(field, minLen, maxLen) {
+       return request.resource.data[field] is string &&
+         request.resource.data[field].size() >= minLen &&
+         request.resource.data[field].size() <= maxLen;
+    }
+
+    // Validate optional string
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    // Validate that the document contains only the allowed fields
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Validate that the document hasn't changed in the fields that are not allowed to be changed
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Domain Validators
+    function isValidSavedResult(data) {
+      return hasOnlyAllowedFields(['userId', 'sentence', 'mode', 'targetWords', 'result', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 100 &&
+             validStringLength('sentence', 1, 2000) &&
+             validStringLength('mode', 1, 50) &&
+             isValidOptionalString('targetWords', 0, 500) &&
+             validStringLength('result', 1, 10000) &&
+             data.createdAt is timestamp;
+    }
+
+    match /saved_results/{resultId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && 
+                       isValidSavedResult(request.resource.data) && 
+                       uidUnchanged();
+      allow update: if isDocOwner() && 
+                       isValidSavedResult(request.resource.data) && 
+                       uidNotModified() &&
+                       areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isDocOwner();
+    }
+  }
+}

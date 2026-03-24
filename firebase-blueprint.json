@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "SavedResult": {
+      "title": "SavedResult",
+      "description": "A saved grammar analysis result",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who saved the result"
+        },
+        "sentence": {
+          "type": "string",
+          "description": "The original sentence that was analyzed"
+        },
+        "mode": {
+          "type": "string",
+          "description": "The analysis mode used"
+        },
+        "targetWords": {
+          "type": "string",
+          "description": "The target words if applicable"
+        },
+        "result": {
+          "type": "string",
+          "description": "JSON stringified array of AnalyzedWord objects"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "When the result was saved"
+        }
+      },
+      "required": ["userId", "sentence", "mode", "result", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/saved_results/{resultId}": {
+      "schema": "SavedResult",
+      "description": "Collection of saved analysis results"
+    }
+  }
+}

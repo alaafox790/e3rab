@@ -3,7 +3,7 @@ import { AnalyzedWord } from "../types";
 // نظام تخزين مؤقت لحفظ النتائج السابقة وتقليل الضغط على السيرفر
 const apiCache = new Map<string, any>();
 
-export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert', targetWords?: string, image?: string, retryCount = 0): Promise<AnalyzedWord[]> {
+export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes', targetWords?: string, image?: string, retryCount = 0): Promise<AnalyzedWord[]> {
   const cacheKey = `analyze_${mode}_${sentence.trim()}_${targetWords?.trim() || ''}_${image ? 'with_image' : 'no_image'}`;
   
   if (apiCache.has(cacheKey)) {
@@ -40,12 +40,6 @@ export async function analyzeSentence(sentence: string, mode: 'full' | 'partial'
   } catch (error: any) {
     console.error("API Error:", error);
     const errorMessage = error.message || String(error);
-    
-    const isRateLimit = errorMessage.includes("429") || errorMessage.includes("Too Many Requests") || errorMessage.includes("quota");
-    
-    if (isRateLimit) {
-       throw new Error("عذراً، تم تجاوز الحد المجاني للطلبات (15 طلب/دقيقة). يرجى الانتظار نصف دقيقة ثم المحاولة.");
-    }
     
     // إظهار رسالة الخطأ الحقيقية إذا كانت متوفرة
     if (errorMessage && errorMessage !== "Failed to fetch") {

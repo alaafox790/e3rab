@@ -20,10 +20,10 @@ async function startServer() {
 
   // Gemini API Initialization
   const getAI = () => {
-    // استخدام المفتاح المخصص إذا أضافه المستخدم، وإلا استخدام المفتاح الافتراضي للمنصة
-    const apiKey = process.env.USER_API_KEY || process.env.GEMINI_API_KEY;
+    // إعطاء الأولوية لمفتاح المستخدم الخاص
+    const apiKey = process.env.USER_API_KEY || process.env.API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("API Key is missing in environment variables.");
+      throw new Error("API Key is missing in environment variables. Please add your API key.");
     }
     return new GoogleGenAI({ apiKey });
   };
@@ -53,6 +53,10 @@ async function startServer() {
       prompt = `قم بالتحويل النحوي المطلوب على الجملة التالية: "${sentence}".
       المطلوب: "${targetWords}". (مثال: حول الجملة الاسمية إلى فعلية، أو حول الحال المفرد إلى جملة، إلخ).
       في حقل word ضع الجملة بعد التحويل، وفي حقل category اختر 'تحويل'، وفي حقل analysis اشرح ما قمت به باختصار مع ذكر التغييرات الإعرابية التي حدثت.`;
+    } else if (mode === 'notes') {
+      prompt = `استخرج الملاحظات النحوية أو الصرفية أو البلاغية البارزة من النص التالي: "${sentence}".
+      ${targetWords ? `ركز بشكل خاص على: "${targetWords}".` : ''}
+      في حقل word ضع الكلمة أو العبارة المتعلقة بالملاحظة، وفي حقل category اختر 'ملاحظات'، وفي حقل analysis اكتب الملاحظة بوضوح وإيجاز.`;
     }
 
     const contents: any[] = [];
@@ -69,7 +73,7 @@ async function startServer() {
     try {
       const ai = getAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-flash-lite-preview",
         contents: { parts: contents },
         config: {
           responseMimeType: "application/json",
@@ -101,7 +105,7 @@ async function startServer() {
     try {
       const ai = getAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-flash-lite-preview",
         contents: prompt,
       });
       res.json({ text: response.text });
@@ -117,7 +121,7 @@ async function startServer() {
     try {
       const ai = getAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-flash-lite-preview",
         contents: prompt,
       });
       res.json({ text: response.text });
