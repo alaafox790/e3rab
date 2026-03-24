@@ -17,22 +17,23 @@ export async function analyzeSentence(sentence: string, mode: 'full' | 'partial'
       body: JSON.stringify({ sentence, mode, targetWords, image })
     });
 
+    const text = await response.text();
     if (!response.ok) {
       let errorMessage = 'Failed to analyze sentence';
       try {
-        const errorData = await response.json();
+        const errorData = JSON.parse(text);
         errorMessage = errorData.error || errorMessage;
       } catch (e) {
-        const textError = await response.text();
-        errorMessage = textError || errorMessage;
+        errorMessage = text || errorMessage;
       }
       throw new Error(errorMessage);
     }
 
     try {
-      return await response.json() as AnalyzedWord[];
+      const finalResult = JSON.parse(text) as AnalyzedWord[];
+      apiCache.set(cacheKey, finalResult);
+      return finalResult;
     } catch (e) {
-      const text = await response.text();
       console.error("Failed to parse JSON response:", text);
       throw new Error(`استجابة غير صالحة من السيرفر: ${text.substring(0, 100)}`);
     }
@@ -68,12 +69,19 @@ export async function searchGrammarRule(ruleName: string, retryCount = 0): Promi
       body: JSON.stringify({ ruleName })
     });
 
+    const text = await response.text();
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to search rule');
+      let errorMessage = 'Failed to search rule';
+      try {
+        const errorData = JSON.parse(text);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        errorMessage = text || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
-    const data = await response.json();
+    const data = JSON.parse(text);
     const finalResult = data.text || 'عذراً، لم أتمكن من العثور على شرح لهذه القاعدة.';
     apiCache.set(cacheKey, finalResult);
     return finalResult;
@@ -96,12 +104,19 @@ export async function analyzePoetry(verse: string, retryCount = 0): Promise<stri
       body: JSON.stringify({ verse })
     });
 
+    const text = await response.text();
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to analyze poetry');
+      let errorMessage = 'Failed to analyze poetry';
+      try {
+        const errorData = JSON.parse(text);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        errorMessage = text || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
-    const data = await response.json();
+    const data = JSON.parse(text);
     const finalResult = data.text || 'عذراً، لم أتمكن من تحليل هذا البيت.';
     apiCache.set(cacheKey, finalResult);
     return finalResult;
