@@ -12,11 +12,18 @@ async function startServer() {
 
   app.use(express.json({ limit: '50mb' }));
 
+  // Logging middleware
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+  });
+
   // Gemini API Initialization
   const getAI = () => {
-    const apiKey = process.env.GEMINI_API_KEY;
+    // استخدام المفتاح المخصص إذا أضافه المستخدم، وإلا استخدام المفتاح الافتراضي للمنصة
+    const apiKey = process.env.USER_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is missing in environment variables.");
+      throw new Error("API Key is missing in environment variables.");
     }
     return new GoogleGenAI({ apiKey });
   };

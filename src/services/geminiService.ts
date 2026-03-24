@@ -18,13 +18,24 @@ export async function analyzeSentence(sentence: string, mode: 'full' | 'partial'
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to analyze sentence');
+      let errorMessage = 'Failed to analyze sentence';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        const textError = await response.text();
+        errorMessage = textError || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
-    const finalResult = await response.json() as AnalyzedWord[];
-    apiCache.set(cacheKey, finalResult);
-    return finalResult;
+    try {
+      return await response.json() as AnalyzedWord[];
+    } catch (e) {
+      const text = await response.text();
+      console.error("Failed to parse JSON response:", text);
+      throw new Error(`استجابة غير صالحة من السيرفر: ${text.substring(0, 100)}`);
+    }
   } catch (error: any) {
     console.error("API Error:", error);
     const errorMessage = error.message || String(error);
