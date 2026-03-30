@@ -3,7 +3,7 @@ import { AnalyzedWord } from "../types";
 // نظام تخزين مؤقت لحفظ النتائج السابقة وتقليل الضغط على السيرفر
 const apiCache = new Map<string, any>();
 
-export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes', targetWords?: string, image?: string, retryCount = 0): Promise<AnalyzedWord[]> {
+export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare', targetWords?: string, image?: string, retryCount = 0): Promise<AnalyzedWord[]> {
   const cacheKey = `analyze_${mode}_${sentence.trim()}_${targetWords?.trim() || ''}_${image ? 'with_image' : 'no_image'}`;
   
   if (apiCache.has(cacheKey)) {
