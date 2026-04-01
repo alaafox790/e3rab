@@ -217,15 +217,6 @@ function Splash({ onComplete }: { onComplete: () => void }) {
         </motion.h1>
         
         <motion.div 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
-          className="text-lg md:text-xl text-white/70 text-center max-w-lg font-sans"
-        >
-          نتيجة ذكية بقوة الذكاء الاصطناعي
-        </motion.div>
-
-        <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8, duration: 0.8 }}
@@ -495,6 +486,7 @@ export default function App() {
   const [fontSize, setFontSize] = useState(16);
   
   const [activeTab, setActiveTab] = useState<'parser' | 'rules' | 'poetry' | 'spelling' | 'saved'>('parser');
+  const [showTabBubbles, setShowTabBubbles] = useState(false);
   const [ruleQuery, setRuleQuery] = useState('');
   const [ruleResult, setRuleResult] = useState('');
   const [ruleLoading, setRuleLoading] = useState(false);
@@ -955,29 +947,43 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex gap-4 mb-6 border-b border-stone-200 relative overflow-x-auto hide-scrollbar">
-              {[
-                { id: 'parser', label: 'النتيجة' },
-                { id: 'rules', label: 'البحث عن قاعدة' },
-                { id: 'poetry', label: 'أبيات شعرية' },
-                { id: 'spelling', label: 'الإملاء الدقيق' },
-                { id: 'saved', label: 'المحفوظات' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`pb-3 px-4 relative transition-colors whitespace-nowrap ${activeTab === tab.id ? 'text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}
-                >
-                  {tab.label}
-                  {activeTab === tab.id && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand"
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </button>
-              ))}
+            <div className="fixed bottom-8 right-8 z-50 flex flex-col-reverse items-end gap-4">
+              <button
+                onClick={() => setShowTabBubbles(!showTabBubbles)}
+                className="w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
+              >
+                {showTabBubbles ? <X size={28} /> : <LayoutGrid size={28} />}
+              </button>
+              
+              <AnimatePresence>
+                {showTabBubbles && (
+                  <div className="flex flex-col-reverse gap-3 items-end">
+                    {[
+                      { id: 'parser', label: 'النتيجة', icon: <Feather size={20} /> },
+                      { id: 'rules', label: 'البحث عن قاعدة', icon: <BookOpenText size={20} /> },
+                      { id: 'poetry', label: 'أبيات شعرية', icon: <ScrollText size={20} /> },
+                      { id: 'spelling', label: 'الإملاء الدقيق', icon: <Check size={20} /> },
+                      { id: 'saved', label: 'المحفوظات', icon: <Bookmark size={20} /> }
+                    ].map((tab, index) => (
+                      <motion.button
+                        key={tab.id}
+                        initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.8 }}
+                        transition={{ delay: index * 0.05 }}
+                        onClick={() => {
+                          setActiveTab(tab.id as any);
+                          setShowTabBubbles(false);
+                        }}
+                        className={`flex items-center gap-3 px-5 py-3 rounded-full shadow-lg transition-colors whitespace-nowrap border ${activeTab === tab.id ? 'bg-brand text-white border-brand' : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-200'}`}
+                      >
+                        <span className="font-bold">{tab.label}</span>
+                        {tab.icon}
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
+              </AnimatePresence>
             </div>
             
             <AnimatePresence mode="wait">
