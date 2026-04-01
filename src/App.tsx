@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff, AlignLeft, TextCursor, MapPin, Filter, Megaphone, RefreshCw, Trash2, Table, AlignJustify, StickyNote, Key, Lock, LayoutGrid, Feather, ScrollText, Clock, Save, Bookmark, MessageCircle, Info, X } from 'lucide-react';
+import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff, AlignLeft, TextCursor, MapPin, Filter, Megaphone, RefreshCw, Trash2, Table, AlignJustify, StickyNote, Key, Lock, LayoutGrid, Feather, ScrollText, Clock, Save, Bookmark, MessageCircle, Info, X, LogOut } from 'lucide-react';
 import { analyzeSentence, searchGrammarRule, analyzePoetry, analyzeSpelling } from './services/geminiService';
 import { AnalyzedWord, SpellingResult } from './types';
 import Markdown from 'react-markdown';
@@ -276,7 +276,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
     if (code === '2020') {
       setShowAdmin(true);
       setError(false);
-    } else if (code === '5000') {
+    } else if (code === '2323') {
       onLogin(false);
     } else if (validCodes.includes(code)) {
       onLogin(true);
@@ -435,6 +435,12 @@ export default function App() {
       localStorage.removeItem('trial_start_time');
       setTrialStartTime(null);
     }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setIsTrial(false);
+    setTimeLeft(null);
   };
 
   useEffect(() => {
@@ -940,8 +946,11 @@ export default function App() {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <button onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm">+</button>
-                  <button onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm">-</button>
+                  <button onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تكبير الخط">+</button>
+                  <button onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تصغير الخط">-</button>
+                  <button onClick={handleLogout} className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-colors shadow-sm flex items-center gap-2" title="تسجيل الخروج">
+                    <LogOut size={20} />
+                  </button>
                 </div>
               </div>
             </div>
