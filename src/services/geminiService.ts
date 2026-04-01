@@ -1,10 +1,10 @@
-import { AnalyzedWord } from "../types";
+import { AnalyzedWord, SpellingResult } from "../types";
 
 // نظام تخزين مؤقت لحفظ النتائج السابقة وتقليل الضغط على السيرفر
 const apiCache = new Map<string, any>();
 
-export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare', targetWords?: string, image?: string, retryCount = 0): Promise<AnalyzedWord[]> {
-  const cacheKey = `analyze_${mode}_${sentence.trim()}_${targetWords?.trim() || ''}_${image ? 'with_image' : 'no_image'}`;
+export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare', targetWords?: string, image?: string, showAllFacets?: boolean, retryCount = 0): Promise<AnalyzedWord[]> {
+  const cacheKey = `analyze_${mode}_${sentence.trim()}_${targetWords?.trim() || ''}_${image ? 'with_image' : 'no_image'}_${showAllFacets ? 'all_facets' : 'normal'}`;
   
   if (apiCache.has(cacheKey)) {
     return apiCache.get(cacheKey);
@@ -14,7 +14,7 @@ export async function analyzeSentence(sentence: string, mode: 'full' | 'partial'
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sentence, mode, targetWords, image })
+      body: JSON.stringify({ sentence, mode, targetWords, image, showAllFacets })
     });
 
     const text = await response.text();
@@ -117,5 +117,43 @@ export async function analyzePoetry(verse: string, retryCount = 0): Promise<stri
   } catch (error: any) {
     console.error("API Error:", error);
     return "فقد الاتصال بالخادم. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.";
+  }
+}
+
+export async function analyzeSpelling(text: string, retryCount = 0): Promise<SpellingResult> {
+  const cacheKey = `spelling_${text.trim()}`;
+  if (apiCache.has(cacheKey)) {
+    return apiCache.get(cacheKey);
+  }
+
+  try {
+    const response = await fetch('/api/spelling', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      let errorMessage = 'Failed to analyze spelling';
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        errorMessage = responseText || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = JSON.parse(responseText);
+    const finalResult: SpellingResult = {
+      correctedText: data.correctedText || 'عذراً، لم أتمكن من تصحيح هذا النص.',
+      corrections: data.corrections || []
+    };
+    apiCache.set(cacheKey, finalResult);
+    return finalResult;
+  } catch (error: any) {
+    console.error("API Error:", error);
+    throw new Error("فقد الاتصال بالخادم. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.");
   }
 }
