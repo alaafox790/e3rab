@@ -7,11 +7,17 @@ dotenv.config();
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
 // Gemini API Initialization
 const getAI = () => {
-  const apiKey = process.env.USER_API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.USER_API_KEY || process.env.API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("API Key is missing in environment variables.");
+    throw new Error("API Key is missing in environment variables. Please add your API key.");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -26,9 +32,17 @@ app.post("/api/analyze", async (req, res) => {
   
   let prompt = '';
   if (mode === 'full') {
-    prompt = `قم بإعراب الجملة التالية إعراباً تفصيلياً، مع التشكيل الكامل لكل كلمة: "${sentence}".`;
+    prompt = `قم بإعراب الجملة التالية إعراباً تفصيلياً. 
+    **هام جداً:**
+    1. يجب تشكيل الكلمات في حقل word تشكيلاً كاملاً (الفتحة، الضمة، الكسرة، السكون، الشدة، التنوين) كما في المثال: الشَّبَحُ، وَصَلَ، الْفَاعِلُ.
+    2. في حقل category، يجب أن تختار قيمة دقيقة من هذه القيم فقط: (مبتدأ، خبر، فاعل، مفعول به، فعل، حرف، اسم، أخرى).
+    الجملة هي: "${sentence}".`;
   } else if (mode === 'partial') {
-    prompt = `قم بإعراب الكلمات التالية فقط من الجملة "${sentence}" مع التشكيل الكامل: "${targetWords}".`;
+    prompt = `قم بإعراب الكلمات التالية فقط من الجملة "${sentence}". 
+    **هام جداً:**
+    1. يجب تشكيل الكلمات في حقل word تشكيلاً كاملاً (الفتحة، الضمة، الكسرة، السكون، الشدة، التنوين).
+    2. في حقل category، يجب أن تختار قيمة دقيقة من هذه القيم فقط: (مبتدأ، خبر، فاعل، مفعول به، فعل، حرف، اسم، أخرى).
+    الكلمات هي: "${targetWords}".`;
   } else if (mode === 'sentence-position') {
     prompt = `استخرج الجمل الفرعية في الجملة التالية: "${sentence}"، وبين موقعها من الإعراب (لها محل أو ليس لها محل) مع التعليل.`;
   } else if (mode === 'extract') {
@@ -43,6 +57,15 @@ app.post("/api/analyze", async (req, res) => {
     المطلوب: "${targetWords}". (مثال: حول الجملة الاسمية إلى فعلية، أو حول الحال المفرد إلى جملة، إلخ).
     في حقل word ضع الجملة بعد التحويل، وفي حقل category اختر 'تحويل'، وفي حقل analysis اشرح ما قمت به باختصار مع ذكر التغييرات الإعرابية التي حدثت.
     ${showAllFacets ? '**ملاحظة هامة (خيار متقدم):** يرجى ذكر جميع الأوجه الممكنة والصحيحة للتحويل من حيث التشكيل أو الصياغة مع توضيح الفرق أو سبب الجواز في حقل analysis.' : ''}`;
+  } else if (mode === 'notes') {
+    prompt = `استخرج الملاحظات النحوية أو الصرفية أو البلاغية البارزة من النص التالي: "${sentence}".
+    ${targetWords ? `ركز بشكل خاص على: "${targetWords}".` : ''}
+    في حقل word ضع الكلمة أو العبارة المتعلقة بالملاحظة، وفي حقل category اختر 'ملاحظات'، وفي حقل analysis اكتب الملاحظة بوضوح وإيجاز.`;
+  } else if (mode === 'compare') {
+    prompt = `قم بمقارنة نحوية أو بلاغية أو دلالية بين الجملتين التاليتين:
+    الجملة الأولى: "${sentence}"
+    الجملة الثانية: "${targetWords}"
+    في حقل word ضع وجه المقارنة أو الكلمة، وفي حقل category اختر 'مقارنة'، وفي حقل analysis اكتب تفاصيل المقارنة بوضوح.`;
   }
 
   const contents: any[] = [];
@@ -59,7 +82,7 @@ app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: { parts: contents },
       config: {
         responseMimeType: "application/json",
@@ -91,7 +114,7 @@ app.post("/api/rule", async (req, res) => {
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: prompt,
     });
     res.json({ text: response.text });
@@ -107,7 +130,7 @@ app.post("/api/poetry", async (req, res) => {
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: prompt,
     });
     res.json({ text: response.text });
@@ -131,7 +154,7 @@ app.post("/api/spelling", async (req, res) => {
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

@@ -486,7 +486,7 @@ export default function App() {
   const [fontSize, setFontSize] = useState(16);
   
   const [activeTab, setActiveTab] = useState<'parser' | 'rules' | 'poetry' | 'spelling' | 'saved'>('parser');
-  const [showTabBubbles, setShowTabBubbles] = useState(false);
+  const [showModeBubbles, setShowModeBubbles] = useState(false);
   const [ruleQuery, setRuleQuery] = useState('');
   const [ruleResult, setRuleResult] = useState('');
   const [ruleLoading, setRuleLoading] = useState(false);
@@ -947,44 +947,74 @@ export default function App() {
               </div>
             </div>
 
-            <div className="fixed bottom-8 right-8 z-50 flex flex-col-reverse items-end gap-4">
-              <button
-                onClick={() => setShowTabBubbles(!showTabBubbles)}
-                className="w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
-              >
-                {showTabBubbles ? <X size={28} /> : <LayoutGrid size={28} />}
-              </button>
-              
-              <AnimatePresence>
-                {showTabBubbles && (
-                  <div className="flex flex-col-reverse gap-3 items-end">
-                    {[
-                      { id: 'parser', label: 'النتيجة', icon: <Feather size={20} /> },
-                      { id: 'rules', label: 'البحث عن قاعدة', icon: <BookOpenText size={20} /> },
-                      { id: 'poetry', label: 'أبيات شعرية', icon: <ScrollText size={20} /> },
-                      { id: 'spelling', label: 'الإملاء الدقيق', icon: <Check size={20} /> },
-                      { id: 'saved', label: 'المحفوظات', icon: <Bookmark size={20} /> }
-                    ].map((tab, index) => (
-                      <motion.button
-                        key={tab.id}
-                        initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 20, scale: 0.8 }}
-                        transition={{ delay: index * 0.05 }}
-                        onClick={() => {
-                          setActiveTab(tab.id as any);
-                          setShowTabBubbles(false);
-                        }}
-                        className={`flex items-center gap-3 px-5 py-3 rounded-full shadow-lg transition-colors whitespace-nowrap border ${activeTab === tab.id ? 'bg-brand text-white border-brand' : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-200'}`}
-                      >
-                        <span className="font-bold">{tab.label}</span>
-                        {tab.icon}
-                      </motion.button>
-                    ))}
-                  </div>
-                )}
-              </AnimatePresence>
+            <div className="flex gap-4 mb-6 border-b border-stone-200 relative overflow-x-auto hide-scrollbar">
+              {[
+                { id: 'parser', label: 'النتيجة' },
+                { id: 'rules', label: 'البحث عن قاعدة' },
+                { id: 'poetry', label: 'أبيات شعرية' },
+                { id: 'spelling', label: 'الإملاء الدقيق' },
+                { id: 'saved', label: 'المحفوظات' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`pb-3 px-4 relative transition-colors whitespace-nowrap ${activeTab === tab.id ? 'text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}
+                >
+                  {tab.label}
+                  {activeTab === tab.id && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </button>
+              ))}
             </div>
+
+            {activeTab === 'parser' && (
+              <div className="fixed bottom-8 right-8 z-50 flex flex-col-reverse items-end gap-4">
+                <button
+                  onClick={() => setShowModeBubbles(!showModeBubbles)}
+                  className="w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
+                >
+                  {showModeBubbles ? <X size={28} /> : <LayoutGrid size={28} />}
+                </button>
+                
+                <AnimatePresence>
+                  {showModeBubbles && (
+                    <div className="flex flex-col-reverse gap-3 items-end">
+                      {[
+                        { id: 'full', label: 'إعراب كامل', icon: <AlignLeft size={20} />, color: 'bg-brand' },
+                        { id: 'partial', label: 'إعراب محدد', icon: <TextCursor size={20} />, color: 'bg-blue-600' },
+                        { id: 'sentence-position', label: 'موقع الجمل', icon: <MapPin size={20} />, color: 'bg-amber-600' },
+                        { id: 'extract', label: 'استخراج', icon: <Filter size={20} />, color: 'bg-purple-600' },
+                        { id: 'vocative', label: 'نوع المنادى', icon: <Megaphone size={20} />, color: 'bg-rose-600' },
+                        { id: 'convert', label: 'تحويل نحوي', icon: <RefreshCw size={20} />, color: 'bg-cyan-600' },
+                        { id: 'notes', label: 'ملاحظات', icon: <StickyNote size={20} />, color: 'bg-indigo-600' },
+                        { id: 'compare', label: 'مقارنات', icon: <AlignJustify size={20} />, color: 'bg-pink-600' }
+                      ].map((m, index) => (
+                        <motion.button
+                          key={m.id}
+                          initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 20, scale: 0.8 }}
+                          transition={{ delay: index * 0.05 }}
+                          onClick={() => {
+                            setMode(m.id as any);
+                            setShowModeBubbles(false);
+                          }}
+                          className={`flex items-center gap-3 px-5 py-3 rounded-full shadow-lg transition-colors whitespace-nowrap border ${mode === m.id ? `${m.color} text-white border-transparent` : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-200'}`}
+                        >
+                          <span className="font-bold">{m.label}</span>
+                          {m.icon}
+                        </motion.button>
+                      ))}
+                    </div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
             
             <AnimatePresence mode="wait">
               {activeTab === 'parser' && (
@@ -1047,35 +1077,6 @@ export default function App() {
                         </motion.div>
                       )}
                     </div>
-
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-stone-100 p-2 rounded-2xl border border-stone-200">
-                      <div className="flex overflow-x-auto gap-2 snap-x hide-scrollbar pb-1">
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setMode('full')} className={`shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl transition-all ${mode === 'full' ? 'bg-brand text-white shadow-md' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'}`}>
-                          <AlignLeft size={18} /> <span className="font-bold">إعراب كامل</span>
-                        </motion.button>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setMode('partial')} className={`shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl transition-all ${mode === 'partial' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'}`}>
-                          <TextCursor size={18} /> <span className="font-bold">إعراب محدد</span>
-                        </motion.button>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setMode('sentence-position')} className={`shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl transition-all ${mode === 'sentence-position' ? 'bg-amber-600 text-white shadow-md' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'}`}>
-                          <MapPin size={18} /> <span className="font-bold">موقع الجمل</span>
-                        </motion.button>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setMode('extract')} className={`shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl transition-all ${mode === 'extract' ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'}`}>
-                          <Filter size={18} /> <span className="font-bold">استخراج</span>
-                        </motion.button>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setMode('vocative')} className={`shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl transition-all ${mode === 'vocative' ? 'bg-rose-600 text-white shadow-md' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'}`}>
-                          <Megaphone size={18} /> <span className="font-bold">نوع المنادى</span>
-                        </motion.button>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setMode('convert')} className={`shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl transition-all ${mode === 'convert' ? 'bg-cyan-600 text-white shadow-md' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'}`}>
-                          <RefreshCw size={18} /> <span className="font-bold">تحويل نحوي</span>
-                        </motion.button>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setMode('notes')} className={`shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl transition-all ${mode === 'notes' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'}`}>
-                          <StickyNote size={18} /> <span className="font-bold">ملاحظات</span>
-                        </motion.button>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setMode('compare')} className={`shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl transition-all ${mode === 'compare' ? 'bg-pink-600 text-white shadow-md' : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'}`}>
-                          <AlignJustify size={18} /> <span className="font-bold">مقارنات</span>
-                        </motion.button>
-                      </div>
-                    </motion.div>
 
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex flex-col md:flex-row gap-4 mt-2">
                       <motion.button
