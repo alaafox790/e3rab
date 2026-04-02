@@ -10,7 +10,7 @@ import { analyzeSentence, searchGrammarRule, analyzePoetry, analyzeSpelling } fr
 import { AnalyzedWord, SpellingResult } from './types';
 import Markdown from 'react-markdown';
 import { db, auth, googleProvider } from './firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { signInWithPopup, onAuthStateChanged, User } from 'firebase/auth';
 
 enum OperationType {
@@ -246,20 +246,24 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
   const [error, setError] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [validCodes, setValidCodes] = useState<string[]>([]);
 
-  const [validCodes, setValidCodes] = useState<string[]>(() => {
-    const saved = localStorage.getItem('valid_codes');
-    if (saved) return JSON.parse(saved);
-    const initialCode = generateRandomCode();
-    localStorage.setItem('valid_codes', JSON.stringify([initialCode]));
-    return [initialCode];
-  });
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'access'), (docSnap) => {
+      if (docSnap.exists()) {
+        setValidCodes(docSnap.data().codes || []);
+      } else {
+        // Initialize if not exists
+        const initialCode = generateRandomCode();
+        setDoc(doc(db, 'settings', 'access'), { codes: [initialCode] });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const handleGenerateNewCode = () => {
+  const handleGenerateNewCode = async () => {
     const newCode = generateRandomCode();
-    const updatedCodes = [newCode]; // Only keep the latest code
-    setValidCodes(updatedCodes);
-    localStorage.setItem('valid_codes', JSON.stringify(updatedCodes));
+    await setDoc(doc(db, 'settings', 'access'), { codes: [newCode] });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -288,7 +292,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
           <h2 className="text-2xl font-bold text-white mb-6">لوحة الإدارة - توليد الأكواد</h2>
           <p className="text-emerald-200/70 mb-4">أحدث كود دخول صالح هو:</p>
           <div className="bg-emerald-900/30 border-2 border-emerald-700/50 rounded-2xl p-6 mb-4">
-            <span className="text-5xl font-bold text-emerald-400 tracking-widest">{validCodes[0]}</span>
+            <span className="text-5xl font-bold text-emerald-400 tracking-widest">{validCodes[0] || '...'}</span>
           </div>
           
           <button

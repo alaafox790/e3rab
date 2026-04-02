@@ -101,5 +101,9 @@ service cloud.firestore {
                        areImmutableFieldsUnchanged(['createdAt']);
       allow delete: if isDocOwner();
     }
+
+    match /settings/access {
+      allow read, write: if true;
+    }
   }
 }
