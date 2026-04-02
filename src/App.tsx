@@ -269,6 +269,8 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
       setError(false);
     } else if (code === '2323') {
       onLogin(false);
+    } else if (/^\d{5}$/.test(code)) {
+      onLogin(false); // Full access for any 5-digit code
     } else if (validCodes.includes(code)) {
       onLogin(true);
     } else {
@@ -344,7 +346,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <label className="text-emerald-500 text-sm font-bold px-1">كلمة الدخول</label>
+            <label className="text-emerald-500 text-sm font-bold px-1">أدخل أي كود مكون من 5 أرقام للوصول</label>
             <div className={`relative flex items-center bg-white rounded-2xl overflow-hidden transition-all ${error ? 'ring-2 ring-red-500' : 'focus-within:ring-2 focus-within:ring-emerald-500'}`}>
               <div className="px-4 text-emerald-400">
                 <Lock size={20} />
@@ -356,8 +358,10 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
                   setCode(e.target.value);
                   setError(false);
                 }}
-                className="flex-1 py-4 bg-transparent outline-none text-stone-800 text-lg font-medium"
+                className="flex-1 py-4 bg-transparent outline-none text-stone-800 text-lg font-medium tracking-widest"
                 dir="ltr"
+                placeholder="•••••"
+                maxLength={5}
                 autoFocus
               />
               <button 
@@ -374,7 +378,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-red-500 text-xs mt-1 px-1 font-bold"
               >
-                كلمة الدخول غير صحيحة
+                الرجاء إدخال كود صحيح مكون من 5 أرقام
               </motion.p>
             )}
           </div>
@@ -773,16 +777,18 @@ export default function App() {
 
     return (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-6">
-        <div className="flex bg-stone-100 p-1 rounded-xl w-fit">
-          <button onClick={() => setDisplayMode('table')} className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${displayMode === 'table' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
-            <Table size={18} /> جدول
-          </button>
-          <button onClick={() => setDisplayMode('separated')} className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${displayMode === 'separated' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
-            <AlignJustify size={18} /> مفصل
-          </button>
-          <button onClick={() => setDisplayMode('cards')} className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${displayMode === 'cards' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
-            <LayoutGrid size={18} /> بطاقات
-          </button>
+        <div className="w-full overflow-hidden">
+          <div className="flex bg-stone-100 p-1 rounded-xl overflow-x-auto hide-scrollbar w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <button onClick={() => setDisplayMode('table')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'table' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
+              <Table size={18} /> جدول
+            </button>
+            <button onClick={() => setDisplayMode('separated')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'separated' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
+              <AlignJustify size={18} /> مفصل
+            </button>
+            <button onClick={() => setDisplayMode('cards')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'cards' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
+              <LayoutGrid size={18} /> بطاقات
+            </button>
+          </div>
         </div>
 
         <div className="p-6 bg-white rounded-xl border border-stone-200 text-stone-800 leading-relaxed whitespace-pre-line relative font-serif text-lg">
@@ -973,17 +979,19 @@ export default function App() {
             </div>
 
             {activeTab === 'parser' && (
-              <div className="fixed bottom-8 right-8 z-50 flex flex-col-reverse items-end gap-4">
-                <button
-                  onClick={() => setShowModeBubbles(!showModeBubbles)}
-                  className="w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
-                >
-                  {showModeBubbles ? <X size={28} /> : <LayoutGrid size={28} />}
-                </button>
+              <div className="fixed bottom-8 right-8 left-8 z-50 flex flex-row items-center justify-start gap-4 pointer-events-none">
+                <div className="pointer-events-auto shrink-0">
+                  <button
+                    onClick={() => setShowModeBubbles(!showModeBubbles)}
+                    className="w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
+                  >
+                    {showModeBubbles ? <X size={28} /> : <LayoutGrid size={28} />}
+                  </button>
+                </div>
                 
                 <AnimatePresence>
                   {showModeBubbles && (
-                    <div className="flex flex-col-reverse gap-3 items-end">
+                    <div className="flex flex-row gap-3 items-center overflow-x-auto hide-scrollbar py-4 px-2 pointer-events-auto max-w-full">
                       {[
                         { id: 'full', label: 'إعراب كامل', icon: <AlignLeft size={20} />, color: 'bg-brand' },
                         { id: 'partial', label: 'إعراب محدد', icon: <TextCursor size={20} />, color: 'bg-blue-600' },
@@ -996,15 +1004,15 @@ export default function App() {
                       ].map((m, index) => (
                         <motion.button
                           key={m.id}
-                          initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 20, scale: 0.8 }}
+                          initial={{ opacity: 0, x: 50, scale: 0.8 }}
+                          animate={{ opacity: 1, x: 0, scale: 1 }}
+                          exit={{ opacity: 0, x: 50, scale: 0.8 }}
                           transition={{ delay: index * 0.05 }}
                           onClick={() => {
                             setMode(m.id as any);
                             setShowModeBubbles(false);
                           }}
-                          className={`flex items-center gap-3 px-5 py-3 rounded-full shadow-lg transition-colors whitespace-nowrap border ${mode === m.id ? `${m.color} text-white border-transparent` : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-200'}`}
+                          className={`shrink-0 flex items-center gap-3 px-5 py-3 rounded-full shadow-lg transition-colors whitespace-nowrap border ${mode === m.id ? `${m.color} text-white border-transparent` : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-200'}`}
                         >
                           <span className="font-bold">{m.label}</span>
                           {m.icon}
@@ -1114,65 +1122,70 @@ export default function App() {
                   </motion.div>
                 ) : (
                   <motion.div key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex flex-col gap-6">
-                    <div className="flex flex-wrap justify-between items-center bg-stone-50 p-4 rounded-2xl border border-stone-200 gap-4">
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => setResult([])} 
-                          className="flex items-center gap-2 bg-white text-stone-700 px-6 py-3 rounded-xl font-bold shadow-sm border border-stone-200 hover:bg-stone-100 transition-all hover:-translate-x-1"
-                        >
-                          <ArrowRight size={20} className="rotate-180" /> رجوع
-                        </button>
-                        <button 
-                          onClick={handleClear} 
-                          className="flex items-center gap-2 bg-red-50 text-red-600 px-6 py-3 rounded-xl font-bold shadow-sm border border-red-200 hover:bg-red-100 transition-all"
-                        >
-                          <Trash2 size={20} /> مسح الكل
-                        </button>
+                    <div className="flex flex-col gap-4 bg-stone-50 p-4 rounded-2xl border border-stone-200">
+                      <div className="flex flex-wrap justify-between items-center gap-4">
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => setResult([])} 
+                            className="flex items-center gap-2 bg-white text-stone-700 px-6 py-3 rounded-xl font-bold shadow-sm border border-stone-200 hover:bg-stone-100 transition-all hover:-translate-x-1"
+                          >
+                            <ArrowRight size={20} className="rotate-180" /> رجوع
+                          </button>
+                          <button 
+                            onClick={handleClear} 
+                            className="flex items-center gap-2 bg-red-50 text-red-600 px-6 py-3 rounded-xl font-bold shadow-sm border border-red-200 hover:bg-red-100 transition-all"
+                          >
+                            <Trash2 size={20} /> مسح الكل
+                          </button>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          <button 
+                            onClick={handleSaveResult} 
+                            disabled={isSaving}
+                            className={`bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm ${saveSuccess ? 'text-green-600 border-green-200 bg-green-50' : ''}`}
+                          >
+                            {isSaving ? <Loader2 size={18} className="animate-spin" /> : saveSuccess ? <Check size={18} /> : <Save size={18} />}
+                            {saveSuccess ? 'تم الحفظ' : 'حفظ النتيجة'}
+                          </button>
+                          <button onClick={handleCopy} className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm">
+                            {copied ? <Check size={18} className="text-brand" /> : <Copy size={18} />}
+                            {copied ? 'تم النسخ' : 'نسخ'}
+                          </button>
+                          <button onClick={handleShare} className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm">
+                            <Share2 size={18} />
+                            مشاركة
+                          </button>
+                        </div>
                       </div>
-                      
-                      <div className="flex flex-wrap gap-2">
-                        <button 
-                          onClick={handleSaveResult} 
-                          disabled={isSaving}
-                          className={`bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm ${saveSuccess ? 'text-green-600 border-green-200 bg-green-50' : ''}`}
-                        >
-                          {isSaving ? <Loader2 size={18} className="animate-spin" /> : saveSuccess ? <Check size={18} /> : <Save size={18} />}
-                          {saveSuccess ? 'تم الحفظ' : 'حفظ النتيجة'}
-                        </button>
-                        <div className="flex bg-stone-200 p-1 rounded-xl">
+
+                      <div className="w-full overflow-hidden">
+                        <div className="flex bg-stone-200 p-1 rounded-xl overflow-x-auto hide-scrollbar w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
                           <button
                             onClick={() => setDisplayMode('bubbles')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'bubbles' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
+                            className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'bubbles' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
                           >
                             <MessageCircle size={18} /> فقاعات
                           </button>
                           <button
                             onClick={() => setDisplayMode('table')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'table' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
+                            className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'table' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
                           >
                             <Table size={18} /> جدول
                           </button>
                           <button
                             onClick={() => setDisplayMode('cards')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'cards' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
+                            className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'cards' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
                           >
                             <LayoutGrid size={18} /> بطاقات
                           </button>
                           <button
                             onClick={() => setDisplayMode('separated')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'separated' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
+                            className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'separated' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
                           >
                             <AlignJustify size={18} /> فواصل
                           </button>
                         </div>
-                        <button onClick={handleCopy} className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm">
-                          {copied ? <Check size={18} className="text-brand" /> : <Copy size={18} />}
-                          {copied ? 'تم النسخ' : 'نسخ'}
-                        </button>
-                        <button onClick={handleShare} className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm">
-                          <Share2 size={18} />
-                          مشاركة
-                        </button>
                       </div>
                     </div>
 
