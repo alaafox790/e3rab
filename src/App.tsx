@@ -159,7 +159,7 @@ function Splash({ onComplete }: { onComplete: () => void }) {
       onComplete();
     }, 3000);
     return () => clearTimeout(timer);
-  }, [onComplete]);
+  }, []); // Empty dependency array prevents timer reset on re-renders
 
   return (
     <motion.div
@@ -269,10 +269,8 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
       setError(false);
     } else if (code === '2323') {
       onLogin(false);
-    } else if (/^\d{5}$/.test(code)) {
-      onLogin(false); // Full access for any 5-digit code
     } else if (validCodes.includes(code)) {
-      onLogin(true);
+      onLogin(true); // 1-hour access for valid generated codes
     } else {
       setError(true);
       setCode('');
@@ -906,52 +904,58 @@ export default function App() {
       </AnimatePresence>
       
       {!showSplash && (
-        <div className="min-h-screen bg-[#fdfbf7] p-4 md:p-8 font-sans relative" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
+        <div className="min-h-screen bg-[#fdfbf7] font-sans relative flex flex-col" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
           {/* Subtle background pattern/gradient for main app */}
           <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none"></div>
           
-          <motion.div
-            layout
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-4xl mx-auto bg-white p-6 rounded-3xl shadow-xl flex flex-col min-h-[80vh] border border-amber-100 relative z-10"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex-grow flex flex-col items-center justify-center">
-                <div className="flex items-center justify-center gap-4">
-                  <motion.div 
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                    className="w-14 h-14 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0"
-                  >
-                    <span className="text-3xl font-bold text-brand font-ruqaa">م</span>
-                  </motion.div>
-                  <div className="flex flex-col items-start">
-                    <h1 className="text-3xl md:text-4xl font-bold text-stone-800 font-ruqaa">
-                      معرب الجمل العربية
-                    </h1>
-                    <span className="text-sm font-medium text-stone-500 mt-1">
-                      بواسطة Gemini AI
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 shrink-0 items-end">
-                {isTrial && timeLeft !== null && (
-                  <div className="bg-red-50 text-red-700 px-3 py-1 rounded-lg text-sm font-bold border border-red-100 flex items-center gap-2">
-                    <Clock size={14} />
-                    <span>الوقت المتبقي: {formatTime(timeLeft)}</span>
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <button onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تكبير الخط">+</button>
-                  <button onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تصغير الخط">-</button>
-                  <button onClick={handleLogout} className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-colors shadow-sm flex items-center gap-2" title="تسجيل الخروج">
-                    <LogOut size={20} />
-                  </button>
-                </div>
-              </div>
+          {/* Top Banner for Timer */}
+          {isTrial && timeLeft !== null && (
+            <div className="w-full bg-red-600 text-white py-3 px-4 shadow-md z-20 relative flex justify-center items-center gap-3">
+              <Clock size={20} className="animate-pulse" />
+              <span className="font-bold text-lg">الوقت المتبقي لجلستك:</span>
+              <span className="font-mono text-xl tracking-widest font-bold bg-white/20 px-3 py-1 rounded-lg" dir="ltr">
+                {formatTime(timeLeft)}
+              </span>
             </div>
+          )}
+
+          <div className="p-4 md:p-8 flex-grow">
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-4xl mx-auto bg-white p-6 rounded-3xl shadow-xl flex flex-col min-h-[80vh] border border-amber-100 relative z-10"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex-grow flex flex-col items-center justify-center">
+                  <div className="flex items-center justify-center gap-4">
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                      className="w-14 h-14 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0"
+                    >
+                      <span className="text-3xl font-bold text-brand font-ruqaa">م</span>
+                    </motion.div>
+                    <div className="flex flex-col items-start">
+                      <h1 className="text-3xl md:text-4xl font-bold text-stone-800 font-ruqaa">
+                        معرب الجمل العربية
+                      </h1>
+                      <span className="text-sm font-medium text-stone-500 mt-1">
+                        علاء الوكيل
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 shrink-0 items-end">
+                  <div className="flex gap-2">
+                    <button onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تكبير الخط">+</button>
+                    <button onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تصغير الخط">-</button>
+                    <button onClick={handleLogout} className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-colors shadow-sm flex items-center gap-2" title="تسجيل الخروج">
+                      <LogOut size={20} />
+                    </button>
+                  </div>
+                </div>
+              </div>
 
             <div className="flex gap-4 mb-6 border-b border-stone-200 relative overflow-x-auto hide-scrollbar">
               {[
@@ -1573,6 +1577,7 @@ export default function App() {
 
           </AnimatePresence>
           </motion.div>
+          </div>
         </div>
       )}
     </ErrorBoundary>
