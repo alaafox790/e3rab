@@ -525,6 +525,7 @@ export default function App() {
   const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
   const [fontSize, setFontSize] = useState(16);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isChallengeMode, setIsChallengeMode] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'parser' | 'rules' | 'poetry' | 'spelling' | 'saved'>('parser');
   const [showModeBubbles, setShowModeBubbles] = useState(false);
@@ -1223,6 +1224,15 @@ export default function App() {
                           <motion.button 
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
+                            onClick={() => setIsChallengeMode(!isChallengeMode)} 
+                            className={`bg-white border px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-bold shadow-sm ${isChallengeMode ? 'border-brand text-brand bg-brand/10' : 'border-stone-200 text-stone-700 hover:bg-stone-50'}`}
+                          >
+                            <Feather size={18} />
+                            {isChallengeMode ? 'إظهار الإعراب' : 'وضع التحدي'}
+                          </motion.button>
+                          <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={handleSaveResult} 
                             disabled={isSaving}
                             className={`bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm ${saveSuccess ? 'text-green-600 border-green-200 bg-green-50' : ''}`}
@@ -1361,7 +1371,7 @@ export default function App() {
                                       </div>
                                       
                                       <div className="text-stone-700 text-sm leading-relaxed text-center border-t border-stone-100 pt-4">
-                                        {colorizeDiacritics(item.analysis.includes(':') && item.analysis.split(':')[0].trim().split(' ').length <= 2 
+                                        {isChallengeMode ? '...' : colorizeDiacritics(item.analysis.includes(':') && item.analysis.split(':')[0].trim().split(' ').length <= 2 
                                           ? item.analysis.split(':').slice(1).join(':').trim() 
                                           : item.analysis)}
                                       </div>
@@ -1394,7 +1404,7 @@ export default function App() {
                                 </span>
                               </div>
                               <div className="text-stone-700 leading-relaxed font-serif" style={{ fontSize: '1.15em' }}>
-                                {colorizeDiacritics(item.analysis)}
+                                {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
                               </div>
                             </motion.div>
                           ))}
@@ -1425,7 +1435,7 @@ export default function App() {
                                   <span className={`px-4 py-1.5 rounded-full border font-bold inline-block ${getCategoryStyles(item.category).badge}`} style={{ fontSize: '0.875em' }}>{item.category}</span>
                                 </td>
                                 <td className="p-5 text-stone-800 leading-relaxed" style={{ fontSize: '1.25em' }}>
-                                  {colorizeDiacritics(item.analysis)}
+                                  {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
                                 </td>
                               </motion.tr>
                             ))}
@@ -1450,7 +1460,7 @@ export default function App() {
                                   {colorizeDiacritics(item.word)}
                                 </h4>
                                 <p className="text-stone-700 leading-relaxed font-serif text-lg">
-                                  {colorizeDiacritics(item.analysis)}
+                                  {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
                                 </p>
                               </div>
                             </motion.div>

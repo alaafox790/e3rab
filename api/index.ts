@@ -118,7 +118,7 @@ app.post("/api/analyze", async (req, res) => {
 
 app.post("/api/rule", async (req, res) => {
   const { ruleName } = req.body;
-  const prompt = `اشرح قاعدة "${ruleName}" في النحو العربي بإيجاز. صغ الإجابة بشكل منظم وواضح.`;
+  const prompt = `اشرح قاعدة "${ruleName}" في النحو العربي شرحاً تفصيلياً، مع ذكر شواهد قرآنية وأبيات شعرية توضح القاعدة. صغ الإجابة بشكل منظم وواضح.`;
   
   try {
     const ai = getAI();
