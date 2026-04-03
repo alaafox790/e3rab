@@ -197,8 +197,8 @@ function Splash({ onComplete }: { onComplete: () => void }) {
           className="w-32 h-32 md:w-40 md:h-40 bg-white/10 rounded-[2rem] border border-white/20 flex items-center justify-center backdrop-blur-md shadow-2xl mb-8"
         >
           <motion.span 
-            animate={{ rotateY: [0, 360] }}
-            transition={{ duration: 2, ease: "easeInOut", repeat: Infinity, repeatDelay: 4 }}
+            animate={{ scale: [1, 1.08, 1], opacity: [0.85, 1, 0.85] }}
+            transition={{ duration: 2.5, ease: "easeInOut", repeat: Infinity }}
             className="text-6xl md:text-7xl font-bold text-white font-ruqaa inline-block"
           >
             ض
@@ -222,11 +222,20 @@ function Splash({ onComplete }: { onComplete: () => void }) {
           <span>الضاد</span>
         </motion.h1>
         
+        <motion.p
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.8 }}
+          className="text-white/90 text-lg md:text-xl font-medium text-center drop-shadow-md mb-8"
+        >
+          إعداد وتصميم أ/ علاء الوكيل
+        </motion.p>
+        
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8, duration: 0.8 }}
-          className="flex gap-3 mt-16"
+          className="flex gap-3 mt-8"
         >
           <div className="w-3 h-3 rounded-full bg-white/80"></div>
           <div className="w-3 h-3 rounded-full bg-white/30"></div>
