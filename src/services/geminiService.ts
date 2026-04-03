@@ -3,7 +3,7 @@ import { AnalyzedWord, SpellingResult } from "../types";
 // نظام تخزين مؤقت لحفظ النتائج السابقة وتقليل الضغط على السيرفر
 const apiCache = new Map<string, any>();
 
-export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare', targetWords?: string, image?: string, showAllFacets?: boolean, retryCount = 0): Promise<AnalyzedWord[]> {
+export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare' | 'detailed', targetWords?: string, image?: string, showAllFacets?: boolean, retryCount = 0): Promise<AnalyzedWord[]> {
   const cacheKey = `analyze_${mode}_${sentence.trim()}_${targetWords?.trim() || ''}_${image ? 'with_image' : 'no_image'}_${showAllFacets ? 'all_facets' : 'normal'}`;
   
   if (apiCache.has(cacheKey)) {
@@ -155,5 +155,40 @@ export async function analyzeSpelling(text: string, retryCount = 0): Promise<Spe
   } catch (error: any) {
     console.error("API Error:", error);
     throw new Error("فقد الاتصال بالخادم. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.");
+  }
+}
+
+export async function generateDictation(ruleName: string, retryCount = 0): Promise<string> {
+  const cacheKey = `dictation_${ruleName.trim()}`;
+  if (apiCache.has(cacheKey)) {
+    return apiCache.get(cacheKey);
+  }
+
+  try {
+    const response = await fetch('/api/dictation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ruleName })
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      let errorMessage = 'Failed to generate dictation';
+      try {
+        const errorData = JSON.parse(text);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        errorMessage = text || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = JSON.parse(text);
+    const finalResult = data.text || 'عذراً، لم أتمكن من إنشاء قطعة إملاء.';
+    apiCache.set(cacheKey, finalResult);
+    return finalResult;
+  } catch (error: any) {
+    console.error("API Error:", error);
+    return "فقد الاتصال بالخادم. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.";
   }
 }

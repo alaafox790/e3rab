@@ -5,8 +5,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff, AlignLeft, TextCursor, MapPin, Filter, Megaphone, RefreshCw, Trash2, Table, AlignJustify, StickyNote, Key, Lock, LayoutGrid, Feather, ScrollText, Clock, Save, Bookmark, MessageCircle, Info, X, LogOut } from 'lucide-react';
-import { analyzeSentence, searchGrammarRule, analyzePoetry, analyzeSpelling } from './services/geminiService';
+import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff, AlignLeft, TextCursor, MapPin, Filter, Megaphone, RefreshCw, Trash2, Table, AlignJustify, StickyNote, Key, Lock, LayoutGrid, Feather, ScrollText, Clock, Save, Bookmark, MessageCircle, Info, X, LogOut, Sparkles, Moon } from 'lucide-react';
+import { analyzeSentence, searchGrammarRule, analyzePoetry, analyzeSpelling, generateDictation } from './services/geminiService';
 import { AnalyzedWord, SpellingResult } from './types';
 import Markdown from 'react-markdown';
 import { db, auth, googleProvider } from './firebase';
@@ -148,11 +148,19 @@ const getCategoryStyles = (category: string) => {
 
 const colorizeDiacritics = (text: string) => {
   if (!text) return text;
-  const diacriticsRegex = /([\u064B-\u065F\u0670])/g;
-  const parts = text.split(diacriticsRegex);
+  // Diacritics (Short vowels)
+  const diacriticsRegex = /([\u064B-\u0652])/g;
+  // Long vowels (Alif, Waw, Ya)
+  const longVowelsRegex = /([\u0627\u0648\u064A])/g;
+  
+  const regex = /([\u064B-\u0652\u0627\u0648\u064A])/g;
+  const parts = text.split(regex);
   return parts.map((part, index) => {
     if (part.match(diacriticsRegex)) {
-      return <span key={index} className="text-red-500">{part}</span>;
+      return <span key={index} className="text-red-500 font-bold">{part}</span>;
+    }
+    if (part.match(longVowelsRegex)) {
+      return <span key={index} className="text-blue-500 font-bold">{part}</span>;
     }
     return part;
   });
@@ -251,6 +259,7 @@ const loadingMessages = [
   "جاري استخراج القواعد النحوية... 🔍",
   "جاري تحديد المواقع... 📍",
   "جاري صياغة النتيجة التفصيلية... ✍️",
+  "جاري رفع الصورة... 🖼️",
   "نضع اللمسات الأخيرة... ✨"
 ];
 
@@ -494,7 +503,7 @@ export default function App() {
 
   const [showSplash, setShowSplash] = useState(true);
   const [sentence, setSentence] = useState('');
-  const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare'>('full');
+  const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare' | 'detailed'>('full');
   const [displayMode, setDisplayMode] = useState<'table' | 'separated' | 'cards' | 'bubbles'>('bubbles');
   const [selectedBubble, setSelectedBubble] = useState<number | null>(null);
 
@@ -515,6 +524,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
   const [fontSize, setFontSize] = useState(16);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'parser' | 'rules' | 'poetry' | 'spelling' | 'saved'>('parser');
   const [showModeBubbles, setShowModeBubbles] = useState(false);
@@ -526,7 +536,9 @@ export default function App() {
   const [poetryLoading, setPoetryLoading] = useState(false);
   const [spellingQuery, setSpellingQuery] = useState('');
   const [spellingResult, setSpellingResult] = useState<SpellingResult | null>(null);
+  const [dictationResult, setDictationResult] = useState<string | null>(null);
   const [spellingLoading, setSpellingLoading] = useState(false);
+  const [spellingMode, setSpellingMode] = useState<'analyze' | 'dictation'>('analyze');
   const [image, setImage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -787,14 +799,25 @@ export default function App() {
     
     setSpellingLoading(true);
     try {
-      const result = await analyzeSpelling(spellingQuery);
-      setSpellingResult(result);
+      if (spellingMode === 'analyze') {
+        const result = await analyzeSpelling(spellingQuery);
+        setSpellingResult(result);
+        setDictationResult(null);
+      } else {
+        const result = await generateDictation(spellingQuery);
+        setDictationResult(result);
+        setSpellingResult(null);
+      }
     } catch (error) {
       console.error(error);
-      setSpellingResult({
-        correctedText: 'حدث خطأ أثناء مراجعة الإملاء.',
-        corrections: []
-      });
+      if (spellingMode === 'analyze') {
+        setSpellingResult({
+          correctedText: 'حدث خطأ أثناء مراجعة الإملاء.',
+          corrections: []
+        });
+      } else {
+        setDictationResult('حدث خطأ أثناء إنشاء قطعة الإملاء.');
+      }
     } finally {
       setSpellingLoading(false);
     }
@@ -934,9 +957,9 @@ export default function App() {
       </AnimatePresence>
       
       {!showSplash && (
-        <div className="min-h-screen bg-[#fdfbf7] font-sans relative flex flex-col" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
+        <div className={`${isDarkMode ? 'dark' : ''} min-h-screen bg-[#fdfbf7] dark:bg-stone-900 font-sans relative flex flex-col`} dir="rtl" style={{ fontSize: `${fontSize}px` }}>
           {/* Subtle background pattern/gradient for main app */}
-          <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none"></div>
+          <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none dark:from-brand/10"></div>
           
           {/* Top Banner for Timer */}
           {isTrial && timeLeft !== null && (
@@ -954,7 +977,7 @@ export default function App() {
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="max-w-4xl mx-auto bg-white p-6 rounded-3xl shadow-xl flex flex-col min-h-[80vh] border border-amber-100 relative z-10"
+              className="max-w-4xl mx-auto bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-xl flex flex-col min-h-[80vh] border border-amber-100 dark:border-stone-700 relative z-10"
             >
               <div className="flex justify-between items-center mb-6">
                 <div className="flex-grow flex flex-col items-center justify-center">
@@ -962,15 +985,15 @@ export default function App() {
                     <motion.div 
                       animate={{ rotate: 360 }}
                       transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                      className="w-14 h-14 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0"
+                      className="w-14 h-14 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0 dark:bg-brand/20"
                     >
                       <span className="text-3xl font-bold text-brand font-ruqaa">م</span>
                     </motion.div>
                     <div className="flex flex-col items-start">
-                      <h1 className="text-3xl md:text-4xl font-bold text-stone-800 font-ruqaa">
+                      <h1 className="text-3xl md:text-4xl font-bold text-stone-800 dark:text-stone-100 font-ruqaa">
                         معرب الجمل العربية
                       </h1>
-                      <span className="text-sm font-medium text-stone-500 mt-1">
+                      <span className="text-sm font-medium text-stone-500 dark:text-stone-400 mt-1">
                         علاء الوكيل
                       </span>
                     </div>
@@ -978,9 +1001,10 @@ export default function App() {
                 </div>
                 <div className="flex flex-col gap-2 shrink-0 items-end">
                   <div className="flex gap-2">
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تكبير الخط">+</motion.button>
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تصغير الخط">-</motion.button>
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleLogout} className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-colors shadow-sm flex items-center gap-2" title="تسجيل الخروج">
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsDarkMode(!isDarkMode)} className="bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 p-2 rounded-xl transition-colors shadow-sm" title="تبديل الوضع">{isDarkMode ? <Sparkles size={20} /> : <Moon size={20} />}</motion.button>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 p-2 rounded-xl transition-colors shadow-sm" title="تكبير الخط">+</motion.button>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 p-2 rounded-xl transition-colors shadow-sm" title="تصغير الخط">-</motion.button>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleLogout} className="bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 p-2 rounded-xl transition-colors shadow-sm flex items-center gap-2" title="تسجيل الخروج">
                       <LogOut size={20} />
                     </motion.button>
                   </div>
@@ -1038,7 +1062,8 @@ export default function App() {
                         { id: 'vocative', label: 'نوع المنادى', icon: <Megaphone size={20} />, color: 'bg-rose-600' },
                         { id: 'convert', label: 'تحويل نحوي', icon: <RefreshCw size={20} />, color: 'bg-cyan-600' },
                         { id: 'notes', label: 'ملاحظات', icon: <StickyNote size={20} />, color: 'bg-indigo-600' },
-                        { id: 'compare', label: 'مقارنات', icon: <AlignJustify size={20} />, color: 'bg-pink-600' }
+                        { id: 'compare', label: 'مقارنات', icon: <AlignJustify size={20} />, color: 'bg-pink-600' },
+                        { id: 'detailed', label: 'التفصيلي جداً', icon: <Sparkles size={20} />, color: 'bg-amber-700' }
                       ].map((m, index) => (
                         <motion.button
                           key={m.id}
@@ -1048,6 +1073,9 @@ export default function App() {
                           transition={{ delay: index * 0.05 }}
                           onClick={() => {
                             setMode(m.id as any);
+                            if (m.id === 'detailed') {
+                              setShowAllFacets(true);
+                            }
                             setShowModeBubbles(false);
                           }}
                           className={`shrink-0 flex items-center gap-3 px-5 py-3 rounded-full shadow-lg transition-colors whitespace-nowrap border ${mode === m.id ? `${m.color} text-white border-transparent` : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-200'}`}
@@ -1106,9 +1134,19 @@ export default function App() {
                             type="text"
                             value={targetWords}
                             onChange={(e) => setTargetWords(e.target.value)}
-                            placeholder={mode === 'compare' ? "أدخل الجملة الثانية للمقارنة..." : mode === 'extract' ? "ما الذي تريد استخراجه؟ (مثال: اسم فاعل، صيغة مبالغة، ممنوع من الصرف...)" : mode === 'convert' ? "ما هو التحويل المطلوب؟ (مثال: حول الجملة الاسمية إلى فعلية، أو حول الحال المفرد إلى جملة)" : mode === 'notes' ? "أي ملاحظات محددة تبحث عنها؟ (اختياري)" : "أدخل الكلمات المراد البحث عنها (مفصولة بفاصلة)..."}
+                            placeholder={mode === 'compare' ? "أدخل الجملة الثانية للمقارنة..." : mode === 'extract' ? "ما الذي تريد استخراجه؟ (مثال: اسم فاعل، صيغة مبالغة، ممنوع من الصرف...)" : mode === 'convert' ? "مثال: حول الجملة الاسمية إلى فعلية، أو حول الحال المفرد إلى جملة..." : mode === 'notes' ? "أي ملاحظات محددة تبحث عنها؟ (اختياري)" : "أدخل الكلمات المراد البحث عنها (مفصولة بفاصلة)..."}
                             className="p-4 text-lg border-2 border-stone-200 rounded-xl focus:ring-4 focus:ring-brand/20 focus:border-brand outline-none bg-stone-50/50"
                           />
+                          {mode === 'convert' && (
+                            <div className="text-sm text-stone-500 bg-stone-100 p-3 rounded-lg border border-stone-200">
+                              <p className="font-semibold mb-1">أمثلة للتحويل:</p>
+                              <ul className="list-disc list-inside space-y-0.5">
+                                <li>حول الجملة الاسمية إلى فعلية</li>
+                                <li>اجعل المبتدأ مثنى</li>
+                                <li>حول الحال المفرد إلى جملة حالية</li>
+                              </ul>
+                            </div>
+                          )}
                           {(mode === 'extract' || mode === 'convert') && (
                             <label className="flex items-center gap-2 text-stone-700 cursor-pointer select-none bg-stone-100 p-3 rounded-xl border border-stone-200 w-fit">
                               <input
@@ -1323,9 +1361,9 @@ export default function App() {
                                       </div>
                                       
                                       <div className="text-stone-700 text-sm leading-relaxed text-center border-t border-stone-100 pt-4">
-                                        {item.analysis.includes(':') && item.analysis.split(':')[0].trim().split(' ').length <= 2 
+                                        {colorizeDiacritics(item.analysis.includes(':') && item.analysis.split(':')[0].trim().split(' ').length <= 2 
                                           ? item.analysis.split(':').slice(1).join(':').trim() 
-                                          : item.analysis}
+                                          : item.analysis)}
                                       </div>
                                       
                                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-b border-r border-stone-200 rotate-45"></div>
@@ -1337,26 +1375,26 @@ export default function App() {
                           </div>
                         </div>
                       ) : displayMode === 'cards' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
                           {result.map((item, index) => (
                             <motion.div
                               layout
-                              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                              initial={{ opacity: 0, scale: 0.95, y: 10 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
-                              transition={{ delay: index * 0.1 }}
+                              transition={{ delay: index * 0.05 }}
                               key={index}
-                              className="bg-white p-6 rounded-2xl shadow-sm border border-stone-200 hover:shadow-md transition-shadow flex flex-col gap-4"
+                              className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 hover:shadow-lg transition-all duration-300 flex flex-col gap-4 group"
                             >
-                              <div className="flex justify-between items-start border-b border-stone-100 pb-4">
-                                <span className={`font-bold font-serif ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.875em' }}>
+                              <div className="flex justify-between items-center border-b border-stone-50 pb-4">
+                                <span className={`font-bold font-serif group-hover:scale-105 transition-transform ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.75em' }}>
                                   {colorizeDiacritics(item.word)}
                                 </span>
-                                <span className={`px-4 py-1.5 rounded-full border font-bold ${getCategoryStyles(item.category).badge}`} style={{ fontSize: '0.875em' }}>
+                                <span className={`px-4 py-1.5 rounded-full border font-bold text-xs ${getCategoryStyles(item.category).badge}`}>
                                   {item.category}
                                 </span>
                               </div>
-                              <div className="text-stone-800 leading-relaxed" style={{ fontSize: '1.25em' }}>
-                                {item.analysis}
+                              <div className="text-stone-700 leading-relaxed font-serif" style={{ fontSize: '1.15em' }}>
+                                {colorizeDiacritics(item.analysis)}
                               </div>
                             </motion.div>
                           ))}
@@ -1387,29 +1425,35 @@ export default function App() {
                                   <span className={`px-4 py-1.5 rounded-full border font-bold inline-block ${getCategoryStyles(item.category).badge}`} style={{ fontSize: '0.875em' }}>{item.category}</span>
                                 </td>
                                 <td className="p-5 text-stone-800 leading-relaxed" style={{ fontSize: '1.25em' }}>
-                                  {item.analysis}
+                                  {colorizeDiacritics(item.analysis)}
                                 </td>
                               </motion.tr>
                             ))}
                           </tbody>
                         </table>
                       ) : (
-                        <div className="leading-[2.5] p-6" style={{ fontSize: '1.5em' }}>
+                        <div className="space-y-4 p-4">
                           {result.map((item, index) => (
-                            <motion.span 
+                            <motion.div 
                               layout
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: index * 0.1 }}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.05 }}
                               key={index}
-                              className="inline-block"
+                              className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm flex items-start gap-4 hover:border-brand/20 transition-colors"
                             >
-                              <span className={`font-bold font-serif ${getCategoryStyles(item.category).text}`}>
-                                {colorizeDiacritics(item.word)}
-                              </span>
-                              <span className="text-stone-700"> ({item.analysis})</span>
-                              {index < result.length - 1 && <span className="mx-3 text-stone-300 font-bold">| |</span>}
-                            </motion.span>
+                              <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center font-bold font-serif text-xl ${getCategoryStyles(item.category).badge}`}>
+                                {colorizeDiacritics(item.word.charAt(0))}
+                              </div>
+                              <div className="flex-grow">
+                                <h4 className={`font-bold font-serif text-xl mb-1 ${getCategoryStyles(item.category).text}`}>
+                                  {colorizeDiacritics(item.word)}
+                                </h4>
+                                <p className="text-stone-700 leading-relaxed font-serif text-lg">
+                                  {colorizeDiacritics(item.analysis)}
+                                </p>
+                              </div>
+                            </motion.div>
                           ))}
                         </div>
                       )}
@@ -1499,10 +1543,20 @@ export default function App() {
                   <textarea
                     value={spellingQuery}
                     onChange={(e) => setSpellingQuery(e.target.value)}
-                    placeholder="أدخل النص هنا لمراجعته إملائياً وتصحيحه..."
-                    className="flex-grow min-w-0 p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-brand outline-none resize-y min-h-[120px] font-serif text-lg"
+                    placeholder={spellingMode === 'analyze' ? "أدخل النص هنا لمراجعته إملائياً وتصحيحه..." : "أدخل اسم القاعدة الإملائية (مثال: الهمزة المتطرفة)..."}
+                    className="flex-grow min-w-0 p-3 border border-stone-300 dark:border-stone-600 rounded-xl focus:ring-2 focus:ring-brand outline-none resize-y min-h-[120px] font-serif text-lg dark:bg-stone-700 dark:text-stone-100"
                   />
                   <div className="flex flex-col gap-2 shrink-0 min-w-[120px]">
+                    <div className="flex flex-col gap-1">
+                      <label className="flex items-center gap-2 text-sm font-bold text-stone-700 dark:text-stone-300">
+                        <input type="radio" checked={spellingMode === 'analyze'} onChange={() => setSpellingMode('analyze')} />
+                        تصحيح إملائي
+                      </label>
+                      <label className="flex items-center gap-2 text-sm font-bold text-stone-700 dark:text-stone-300">
+                        <input type="radio" checked={spellingMode === 'dictation'} onChange={() => setSpellingMode('dictation')} />
+                        إنشاء إملاء
+                      </label>
+                    </div>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -1515,15 +1569,15 @@ export default function App() {
                       ) : (
                         <>
                           <BookOpenText />
-                          تصحيح
+                          {spellingMode === 'analyze' ? 'تصحيح' : 'إنشاء'}
                         </>
                       )}
                     </motion.button>
-                    {(spellingQuery || spellingResult) && (
+                    {(spellingQuery || spellingResult || dictationResult) && (
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => { setSpellingQuery(''); setSpellingResult(null); }}
+                        onClick={() => { setSpellingQuery(''); setSpellingResult(null); setDictationResult(null); }}
                         className="text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-4 py-2 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
                       >
                         <Trash2 size={18} />
@@ -1534,6 +1588,15 @@ export default function App() {
                 </div>
                 <AnimatePresence mode="wait">
                 {spellingResult && renderSpellingResult()}
+                {dictationResult && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-6 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-100 leading-relaxed whitespace-pre-line relative font-serif text-lg">
+                    <h3 className="text-xl font-bold text-brand mb-4 flex items-center gap-2">
+                      <BookOpenText className="text-brand" />
+                      قطعة الإملاء المقترحة
+                    </h3>
+                    {dictationResult}
+                  </motion.div>
+                )}
                 </AnimatePresence>
               </motion.div>
             )}
