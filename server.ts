@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, ThinkingLevel, Modality } from "@google/genai";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -25,6 +25,28 @@ const getAI = () => {
     throw new Error("API Key is missing in environment variables. Please add your API key.");
   }
   return new GoogleGenAI({ apiKey });
+};
+
+const executeWithRetry = async (operation: () => Promise<any>, maxRetries = 3, baseDelay = 1000) => {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      attempt++;
+      const isOverloaded = error?.status === 503 || error?.message?.includes('503') || error?.message?.includes('high demand') || error?.message?.includes('UNAVAILABLE');
+      if (isOverloaded) {
+        if (attempt >= maxRetries) {
+          throw new Error("الخدمة تواجه ضغطاً عالياً حالياً. يرجى المحاولة مرة أخرى بعد قليل.");
+        }
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        console.log(`API overloaded (503). Retrying in ${delay}ms... (Attempt ${attempt} of ${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
 };
 
 // API Routes
@@ -86,7 +108,7 @@ app.post("/api/analyze", async (req, res) => {
 
   try {
     const ai = getAI();
-    const response = await ai.models.generateContent({
+    const response = await executeWithRetry(() => ai.models.generateContent({
       model: "gemini-3.1-flash-lite-preview",
       contents: { parts: contents },
       config: {
@@ -104,7 +126,7 @@ app.post("/api/analyze", async (req, res) => {
           }
         }
       }
-    });
+    }));
     res.json(JSON.parse(response.text || '[]'));
   } catch (error: any) {
     console.error("Gemini Error:", error);
@@ -118,10 +140,10 @@ app.post("/api/rule", async (req, res) => {
   
   try {
     const ai = getAI();
-    const response = await ai.models.generateContent({
+    const response = await executeWithRetry(() => ai.models.generateContent({
       model: "gemini-3.1-flash-lite-preview",
-      contents: prompt,
-    });
+      contents: prompt
+    }));
     res.json({ text: response.text });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -134,10 +156,10 @@ app.post("/api/poetry", async (req, res) => {
   
   try {
     const ai = getAI();
-    const response = await ai.models.generateContent({
+    const response = await executeWithRetry(() => ai.models.generateContent({
       model: "gemini-3.1-flash-lite-preview",
-      contents: prompt,
-    });
+      contents: prompt
+    }));
     res.json({ text: response.text });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -158,13 +180,13 @@ app.post("/api/spelling", async (req, res) => {
   
   try {
     const ai = getAI();
-    const response = await ai.models.generateContent({
+    const response = await executeWithRetry(() => ai.models.generateContent({
       model: "gemini-3.1-flash-lite-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
       }
-    });
+    }));
     res.json(JSON.parse(response.text || '{}'));
   } catch (error: any) {
     res.status(500).json({ error: error.message });

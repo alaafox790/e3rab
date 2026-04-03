@@ -79,9 +79,14 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
           <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg text-center">
             <h2 className="text-2xl font-bold text-red-600 mb-4">عذراً، حدث خطأ غير متوقع!</h2>
             <p className="text-stone-600 mb-6">واجه التطبيق مشكلة أثناء عرض البيانات. يرجى تحديث الصفحة والمحاولة مرة أخرى.</p>
-            <button onClick={() => window.location.reload()} className="bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-light">
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => window.location.reload()} 
+              className="bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-light"
+            >
               تحديث الصفحة
-            </button>
+            </motion.button>
           </div>
         </div>
       );
@@ -167,6 +172,7 @@ function Splash({ onComplete }: { onComplete: () => void }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 flex flex-col items-center justify-center p-6 bg-brand overflow-hidden"
+      dir="rtl"
     >
       {/* Subtle + grid pattern */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
@@ -184,7 +190,7 @@ function Splash({ onComplete }: { onComplete: () => void }) {
       <div className="absolute w-[500px] h-[500px] rounded-full bg-white/5 blur-2xl pointer-events-none"></div>
 
       <div className="relative z-10 flex flex-col items-center justify-center">
-        <motion.div
+        <motion.div 
           initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
           animate={{ scale: 1, opacity: 1, rotate: 0 }}
           transition={{ duration: 0.8, ease: "easeOut", type: "spring", bounce: 0.5 }}
@@ -193,9 +199,9 @@ function Splash({ onComplete }: { onComplete: () => void }) {
           <motion.span 
             animate={{ rotateY: [0, 360] }}
             transition={{ duration: 2, ease: "easeInOut", repeat: Infinity, repeatDelay: 4 }}
-            className="text-6xl md:text-7xl font-bold text-white font-sans inline-block"
+            className="text-6xl md:text-7xl font-bold text-white font-ruqaa inline-block"
           >
-            عرب
+            ض
           </motion.span>
         </motion.div>
         
@@ -211,9 +217,9 @@ function Splash({ onComplete }: { onComplete: () => void }) {
             transition={{ duration: 1.5, ease: "easeInOut", repeat: Infinity, repeatDelay: 3 }}
             className="inline-block origin-bottom"
           >
-            معرب
+            لغة
           </motion.span>
-          <span>الجمل العربية</span>
+          <span>الضاد</span>
         </motion.h1>
         
         <motion.div 
@@ -295,26 +301,32 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
             <span className="text-5xl font-bold text-emerald-400 tracking-widest">{validCodes[0] || '...'}</span>
           </div>
           
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleGenerateNewCode}
             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all text-lg mb-6 shadow-md"
           >
             توليد كود جديد
-          </button>
+          </motion.button>
           
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onLogin(false)}
             className="w-full bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl transition-all text-lg mb-4"
           >
             الدخول للتطبيق كمسؤول
-          </button>
+          </motion.button>
 
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => { setShowAdmin(false); setCode(''); }}
             className="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold py-4 rounded-2xl transition-all text-lg"
           >
             العودة لتسجيل الدخول
-          </button>
+          </motion.button>
         </motion.div>
       </div>
     );
@@ -366,13 +378,15 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
                 maxLength={5}
                 autoFocus
               />
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="px-4 text-emerald-400 hover:text-emerald-600 transition-colors"
               >
                 <Feather size={20} className={showPassword ? "opacity-100" : "opacity-50"} />
-              </button>
+              </motion.button>
             </div>
             {error && (
               <motion.p 
@@ -385,12 +399,14 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
             )}
           </div>
 
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="submit"
             className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-bold py-4 rounded-2xl transition-all text-lg flex items-center justify-center gap-2 mt-2"
           >
             دخول <Feather size={20} className="rotate-45" />
-          </button>
+          </motion.button>
         </form>
 
         <div className="mt-10 text-center">
@@ -510,6 +526,7 @@ export default function App() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [savedResults, setSavedResults] = useState<any[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -781,15 +798,15 @@ export default function App() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-6">
         <div className="w-full overflow-hidden">
           <div className="flex bg-stone-100 p-1 rounded-xl overflow-x-auto hide-scrollbar w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <button onClick={() => setDisplayMode('table')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'table' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setDisplayMode('table')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'table' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
               <Table size={18} /> جدول
-            </button>
-            <button onClick={() => setDisplayMode('separated')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'separated' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setDisplayMode('separated')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'separated' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
               <AlignJustify size={18} /> مفصل
-            </button>
-            <button onClick={() => setDisplayMode('cards')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'cards' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setDisplayMode('cards')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'cards' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
               <LayoutGrid size={18} /> بطاقات
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -952,11 +969,11 @@ export default function App() {
                 </div>
                 <div className="flex flex-col gap-2 shrink-0 items-end">
                   <div className="flex gap-2">
-                    <button onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تكبير الخط">+</button>
-                    <button onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تصغير الخط">-</button>
-                    <button onClick={handleLogout} className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-colors shadow-sm flex items-center gap-2" title="تسجيل الخروج">
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تكبير الخط">+</motion.button>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm" title="تصغير الخط">-</motion.button>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleLogout} className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-colors shadow-sm flex items-center gap-2" title="تسجيل الخروج">
                       <LogOut size={20} />
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               </div>
@@ -969,8 +986,10 @@ export default function App() {
                 { id: 'spelling', label: 'الإملاء الدقيق' },
                 { id: 'saved', label: 'المحفوظات' }
               ].map((tab) => (
-                <button
+                <motion.button
                   key={tab.id}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`pb-3 px-4 relative transition-colors whitespace-nowrap ${activeTab === tab.id ? 'text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}
                 >
@@ -982,19 +1001,21 @@ export default function App() {
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}
-                </button>
+                </motion.button>
               ))}
             </div>
 
             {activeTab === 'parser' && (
               <div className="fixed bottom-8 right-8 left-8 z-50 flex flex-row items-center justify-start gap-4 pointer-events-none">
                 <div className="pointer-events-auto shrink-0">
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setShowModeBubbles(!showModeBubbles)}
-                    className="w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
+                    className="w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center transition-transform"
                   >
                     {showModeBubbles ? <X size={28} /> : <LayoutGrid size={28} />}
-                  </button>
+                  </motion.button>
                 </div>
                 
                 <AnimatePresence>
@@ -1133,66 +1154,90 @@ export default function App() {
                     <div className="flex flex-col gap-4 bg-stone-50 p-4 rounded-2xl border border-stone-200">
                       <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex gap-2">
-                          <button 
+                          <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => setResult([])} 
                             className="flex items-center gap-2 bg-white text-stone-700 px-6 py-3 rounded-xl font-bold shadow-sm border border-stone-200 hover:bg-stone-100 transition-all hover:-translate-x-1"
                           >
                             <ArrowRight size={20} className="rotate-180" /> رجوع
-                          </button>
-                          <button 
+                          </motion.button>
+                          <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={handleClear} 
                             className="flex items-center gap-2 bg-red-50 text-red-600 px-6 py-3 rounded-xl font-bold shadow-sm border border-red-200 hover:bg-red-100 transition-all"
                           >
                             <Trash2 size={20} /> مسح الكل
-                          </button>
+                          </motion.button>
                         </div>
                         
                         <div className="flex flex-wrap gap-2">
-                          <button 
+                          <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={handleSaveResult} 
                             disabled={isSaving}
                             className={`bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm ${saveSuccess ? 'text-green-600 border-green-200 bg-green-50' : ''}`}
                           >
                             {isSaving ? <Loader2 size={18} className="animate-spin" /> : saveSuccess ? <Check size={18} /> : <Save size={18} />}
                             {saveSuccess ? 'تم الحفظ' : 'حفظ النتيجة'}
-                          </button>
-                          <button onClick={handleCopy} className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm">
+                          </motion.button>
+                          <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleCopy} 
+                            className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm"
+                          >
                             {copied ? <Check size={18} className="text-brand" /> : <Copy size={18} />}
                             {copied ? 'تم النسخ' : 'نسخ'}
-                          </button>
-                          <button onClick={handleShare} className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm">
+                          </motion.button>
+                          <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleShare} 
+                            className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm"
+                          >
                             <Share2 size={18} />
                             مشاركة
-                          </button>
+                          </motion.button>
                         </div>
                       </div>
 
                       <div className="w-full overflow-hidden">
                         <div className="flex bg-stone-200 p-1 rounded-xl overflow-x-auto hide-scrollbar w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
-                          <button
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => setDisplayMode('bubbles')}
                             className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'bubbles' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
                           >
                             <MessageCircle size={18} /> فقاعات
-                          </button>
-                          <button
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => setDisplayMode('table')}
                             className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'table' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
                           >
                             <Table size={18} /> جدول
-                          </button>
-                          <button
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => setDisplayMode('cards')}
                             className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'cards' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
                           >
                             <LayoutGrid size={18} /> بطاقات
-                          </button>
-                          <button
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => setDisplayMode('separated')}
                             className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'separated' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
                           >
                             <AlignJustify size={18} /> فواصل
-                          </button>
+                          </motion.button>
                         </div>
                       </div>
                     </div>
@@ -1252,12 +1297,14 @@ export default function App() {
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${getCategoryStyles(item.category).badge}`}>
                                           {item.category}
                                         </span>
-                                        <button 
+                                        <motion.button 
+                                          whileHover={{ scale: 1.1 }}
+                                          whileTap={{ scale: 0.9 }}
                                           onClick={(e) => { e.stopPropagation(); setSelectedBubble(null); }}
                                           className="text-stone-400 hover:text-stone-600 transition-colors p-1"
                                         >
                                           <X size={18} />
-                                        </button>
+                                        </motion.button>
                                       </div>
                                       
                                       <div className="text-center mb-4">
@@ -1374,7 +1421,9 @@ export default function App() {
                     placeholder="أدخل اسم القاعدة (مثال: كان وأخواتها)..."
                     className="flex-grow min-w-0 p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-brand outline-none font-serif text-lg"
                   />
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={handleSearchRule}
                     disabled={ruleLoading}
                     className={`shrink-0 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md ${ruleLoading ? 'bg-stone-400 cursor-not-allowed' : 'bg-brand hover:bg-brand-light hover:shadow-brand/30'}`}
@@ -1387,7 +1436,7 @@ export default function App() {
                         بحث
                       </>
                     )}
-                  </button>
+                  </motion.button>
                 </div>
                 <AnimatePresence mode="wait">
                 {ruleResult && (
@@ -1408,7 +1457,9 @@ export default function App() {
                     placeholder="أدخل البيت الشعري هنا (مثال: الخيل والليل والبيداء تعرفني...)"
                     className="flex-grow min-w-0 p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-brand outline-none resize-y min-h-[120px] font-serif text-lg"
                   />
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={handlePoetryAnalyze}
                     disabled={poetryLoading}
                     className={`shrink-0 text-white px-6 py-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-all shadow-md min-w-[120px] ${poetryLoading ? 'bg-stone-400 cursor-not-allowed' : 'bg-brand hover:bg-brand-light hover:shadow-brand/30'}`}
@@ -1421,7 +1472,7 @@ export default function App() {
                         تحليل
                       </>
                     )}
-                  </button>
+                  </motion.button>
                 </div>
                 <AnimatePresence mode="wait">
                 {poetryResult && (
@@ -1443,7 +1494,9 @@ export default function App() {
                     className="flex-grow min-w-0 p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-brand outline-none resize-y min-h-[120px] font-serif text-lg"
                   />
                   <div className="flex flex-col gap-2 shrink-0 min-w-[120px]">
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={handleSpellingAnalyze}
                       disabled={spellingLoading}
                       className={`text-white flex-grow px-6 py-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-all shadow-md ${spellingLoading ? 'bg-stone-400 cursor-not-allowed' : 'bg-brand hover:bg-brand-light hover:shadow-brand/30'}`}
@@ -1456,15 +1509,17 @@ export default function App() {
                           تصحيح
                         </>
                       )}
-                    </button>
+                    </motion.button>
                     {(spellingQuery || spellingResult) && (
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => { setSpellingQuery(''); setSpellingResult(null); }}
                         className="text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-4 py-2 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
                       >
                         <Trash2 size={18} />
                         مسح
-                      </button>
+                      </motion.button>
                     )}
                   </div>
                 </div>
@@ -1480,25 +1535,29 @@ export default function App() {
                     <Save className="text-brand" />
                     النتائج المحفوظة
                   </h2>
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => auth.currentUser && fetchSavedResults(auth.currentUser.uid)}
                     className="p-2 text-stone-500 hover:text-brand bg-stone-100 hover:bg-stone-200 rounded-full transition-colors"
                     title="تحديث"
                   >
                     <RefreshCw size={20} className={loadingSaved ? "animate-spin" : ""} />
-                  </button>
+                  </motion.button>
                 </div>
 
                 {!auth.currentUser ? (
                   <div className="text-center py-12 bg-stone-50 rounded-2xl border border-stone-200">
                     <Save size={48} className="mx-auto text-stone-300 mb-4" />
                     <p className="text-stone-600 mb-4 text-lg">يجب تسجيل الدخول لحفظ وعرض نتائجك</p>
-                    <button 
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => signInWithPopup(auth, googleProvider)}
                       className="bg-brand text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-light transition-colors"
                     >
                       تسجيل الدخول
-                    </button>
+                    </motion.button>
                   </div>
                 ) : loadingSaved ? (
                   <div className="flex justify-center py-12">
@@ -1534,13 +1593,15 @@ export default function App() {
                               {item.createdAt?.toDate ? new Date(item.createdAt.toDate()).toLocaleDateString('ar-EG') : ''}
                             </span>
                           </div>
-                          <button 
+                          <motion.button 
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
                             onClick={() => handleDeleteSaved(item.id)}
                             className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
                             title="حذف"
                           >
                             <Trash2 size={18} />
-                          </button>
+                          </motion.button>
                         </div>
                         
                         <div className="bg-stone-50 p-4 rounded-xl border border-stone-100 font-serif text-lg">
@@ -1554,7 +1615,9 @@ export default function App() {
                         )}
                         
                         <div className="mt-2">
-                          <button 
+                          <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => {
                               try {
                                 const parsedResult = JSON.parse(item.result);
@@ -1570,7 +1633,7 @@ export default function App() {
                             className="text-brand hover:text-brand-light font-bold flex items-center gap-1"
                           >
                             عرض النتيجة <ArrowRight size={16} className="rotate-180" />
-                          </button>
+                          </motion.button>
                         </div>
                       </motion.div>
                     ))}
