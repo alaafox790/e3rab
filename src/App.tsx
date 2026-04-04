@@ -524,7 +524,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
   const [fontSize, setFontSize] = useState(16);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isChallengeMode, setIsChallengeMode] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'parser' | 'rules' | 'poetry' | 'spelling' | 'saved'>('parser');
@@ -958,9 +957,9 @@ export default function App() {
       </AnimatePresence>
       
       {!showSplash && (
-        <div className={`${isDarkMode ? 'dark' : ''} min-h-screen bg-[#fdfbf7] dark:bg-stone-900 font-sans relative flex flex-col`} dir="rtl" style={{ fontSize: `${fontSize}px` }}>
+        <div className="min-h-screen bg-[#fdfbf7] font-sans relative flex flex-col" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
           {/* Subtle background pattern/gradient for main app */}
-          <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none dark:from-brand/10"></div>
+          <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none"></div>
           
           {/* Top Banner for Timer */}
           {isTrial && timeLeft !== null && (
@@ -1002,7 +1001,6 @@ export default function App() {
                 </div>
                 <div className="flex flex-col gap-2 shrink-0 items-end">
                   <div className="flex gap-2">
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsDarkMode(!isDarkMode)} className="bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 p-2 rounded-xl transition-colors shadow-sm" title="تبديل الوضع">{isDarkMode ? <Sparkles size={20} /> : <Moon size={20} />}</motion.button>
                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 p-2 rounded-xl transition-colors shadow-sm" title="تكبير الخط">+</motion.button>
                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 p-2 rounded-xl transition-colors shadow-sm" title="تصغير الخط">-</motion.button>
                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleLogout} className="bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 p-2 rounded-xl transition-colors shadow-sm flex items-center gap-2" title="تسجيل الخروج">
@@ -1012,41 +1010,47 @@ export default function App() {
                 </div>
               </div>
 
-            <div className="flex gap-4 mb-6 border-b border-stone-200 relative overflow-x-auto hide-scrollbar">
+            <div className="flex gap-3 mb-8 overflow-x-auto hide-scrollbar pb-2">
               {[
-                { id: 'parser', label: 'النتيجة' },
-                { id: 'rules', label: 'البحث عن قاعدة' },
-                { id: 'poetry', label: 'أبيات شعرية' },
-                { id: 'spelling', label: 'الإملاء الدقيق' },
-                { id: 'saved', label: 'المحفوظات' }
+                { id: 'parser', label: 'النتيجة', icon: <AlignLeft size={18} /> },
+                { id: 'rules', label: 'البحث عن قاعدة', icon: <Search size={18} /> },
+                { id: 'poetry', label: 'أبيات شعرية', icon: <Feather size={18} /> },
+                { id: 'spelling', label: 'الإملاء الدقيق', icon: <Check size={18} /> },
+                { id: 'saved', label: 'المحفوظات', icon: <Bookmark size={18} /> }
               ].map((tab) => (
                 <motion.button
                   key={tab.id}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`pb-3 px-4 relative transition-colors whitespace-nowrap ${activeTab === tab.id ? 'text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold transition-all whitespace-nowrap shadow-sm ${
+                    activeTab === tab.id 
+                      ? 'bg-brand text-white shadow-brand/20 border border-transparent' 
+                      : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 hover:border-stone-300'
+                  }`}
                 >
+                  {tab.icon}
                   {tab.label}
-                  {activeTab === tab.id && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand"
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
                 </motion.button>
               ))}
             </div>
 
             {activeTab === 'parser' && (
               <div className="fixed bottom-8 right-8 left-8 z-50 flex flex-row items-center justify-start gap-4 pointer-events-none">
-                <div className="pointer-events-auto shrink-0">
+                <div className="pointer-events-auto shrink-0 relative">
+                  {/* Pulsing ring behind the button */}
+                  {!showModeBubbles && (
+                    <motion.div
+                      animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute inset-0 bg-brand rounded-full z-0"
+                    />
+                  )}
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowModeBubbles(!showModeBubbles)}
-                    className="w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center transition-transform"
+                    className="w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center transition-transform relative z-10"
                   >
                     {showModeBubbles ? <X size={28} /> : <LayoutGrid size={28} />}
                   </motion.button>
@@ -1193,9 +1197,47 @@ export default function App() {
                     )}
                   </motion.div>
                 ) : loading ? (
-                  <motion.div key="loading" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex flex-col items-center justify-center py-24 gap-6">
-                    <Loader2 size={64} className="animate-spin text-brand" />
-                    <h3 className="text-2xl font-bold text-stone-700">{loadingMessage}</h3>
+                  <motion.div key="loading" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex flex-col items-center justify-center py-24 gap-8">
+                    <div className="relative flex items-center justify-center w-32 h-32">
+                      {/* Rotating dashed border */}
+                      <motion.div 
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-0 rounded-full border-2 border-dashed border-teal-400/60"
+                      />
+                      {/* Inner solid circle with gradient */}
+                      <div className="absolute inset-2 rounded-full bg-gradient-to-br from-teal-100 to-teal-200/50 flex items-center justify-center shadow-inner border border-teal-200/50">
+                        <Sparkles size={40} className="text-teal-700" strokeWidth={1.5} />
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-center gap-4">
+                      <h3 className="text-2xl font-bold text-teal-700">{loadingMessage}</h3>
+                      
+                      {/* Loading dots */}
+                      <div className="flex gap-2">
+                        {[0, 1, 2, 3, 4].map((i) => (
+                          <motion.div
+                            key={i}
+                            animate={{ 
+                              scale: [1, 1.2, 1],
+                              opacity: [0.5, 1, 0.5]
+                            }}
+                            transition={{ 
+                              duration: 1.5, 
+                              repeat: Infinity, 
+                              delay: i * 0.2,
+                              ease: "easeInOut"
+                            }}
+                            className="w-3 h-3 rounded-full bg-teal-600"
+                          />
+                        ))}
+                      </div>
+                      
+                      <p className="text-sm text-stone-500 mt-2 font-medium">
+                        يتم تحليل الجملة بواسطة Google Gemini AI
+                      </p>
+                    </div>
                   </motion.div>
                 ) : (
                   <motion.div key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex flex-col gap-6">
