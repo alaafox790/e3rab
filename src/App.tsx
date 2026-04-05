@@ -972,26 +972,26 @@ export default function App() {
 
           {/* Sidebar */}
           <aside className={`w-full md:w-[340px] bg-white border-b md:border-b-0 md:border-l border-stone-200 flex flex-col z-20 shrink-0 shadow-sm ${isTrial ? 'md:mt-14' : ''}`}>
-            <div className="p-6 border-b border-stone-100 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
+            <div className="p-4 md:p-6 border-b border-stone-100 flex flex-col xl:flex-row items-center xl:items-start justify-between gap-4 text-center xl:text-right">
+              <div className="flex items-center gap-3 md:gap-4">
                 <motion.div 
                   animate={{ rotate: 360 }}
                   transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                  className="w-12 h-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0"
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0"
                 >
-                  <span className="text-2xl font-bold text-brand font-ruqaa">م</span>
+                  <span className="text-xl md:text-2xl font-bold text-brand font-ruqaa">م</span>
                 </motion.div>
                 <div className="flex flex-col items-start">
-                  <h1 className="text-2xl font-bold text-stone-800 font-ruqaa whitespace-nowrap">
+                  <h1 className="text-xl md:text-2xl font-bold text-stone-800 font-ruqaa whitespace-nowrap">
                     معرب الجمل
                   </h1>
-                  <span className="text-xs font-medium text-stone-500 mt-1 whitespace-nowrap">
+                  <span className="text-[10px] md:text-xs font-medium text-stone-500 mt-1 whitespace-nowrap">
                     علاء الوكيل
                   </span>
                 </div>
               </div>
               
-              <div className="text-[10px] sm:text-xs text-stone-400 font-serif leading-relaxed text-left opacity-80 italic">
+              <div className="text-[10px] md:text-xs text-stone-400 font-serif leading-relaxed opacity-80 italic whitespace-nowrap">
                 أنا البحرُ في أحشائِهِ الدُّرُّ كامنٌ<br/>
                 فهل سألوا الغوّاصَ عن صدفاتي؟
               </div>
