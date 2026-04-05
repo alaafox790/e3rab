@@ -505,6 +505,7 @@ export default function App() {
   const [sentence, setSentence] = useState('');
   const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare' | 'detailed'>('full');
   const [displayMode, setDisplayMode] = useState<'table' | 'separated' | 'cards' | 'bubbles'>('bubbles');
+  const [showDisplayModes, setShowDisplayModes] = useState(false);
   const [selectedBubble, setSelectedBubble] = useState<number | null>(null);
 
   useEffect(() => {
@@ -957,13 +958,10 @@ export default function App() {
       </AnimatePresence>
       
       {!showSplash && (
-        <div className="min-h-screen bg-[#fdfbf7] font-sans relative flex flex-col" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
-          {/* Subtle background pattern/gradient for main app */}
-          <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none"></div>
-          
+        <div className="min-h-screen bg-[#fdfbf7] font-sans relative flex flex-col md:flex-row" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
           {/* Top Banner for Timer */}
           {isTrial && timeLeft !== null && (
-            <div className="w-full bg-red-600 text-white py-3 px-4 shadow-md z-20 relative flex justify-center items-center gap-3">
+            <div className="w-full bg-red-600 text-white py-3 px-4 shadow-md z-30 relative flex justify-center items-center gap-3 md:fixed md:top-0 md:left-0 md:right-0">
               <Clock size={20} className="animate-pulse" />
               <span className="font-bold text-lg">الوقت المتبقي لجلستك:</span>
               <span className="font-mono text-xl tracking-widest font-bold bg-white/20 px-3 py-1 rounded-lg" dir="ltr">
@@ -972,58 +970,47 @@ export default function App() {
             </div>
           )}
 
-          <div className="p-4 md:p-8 flex-grow">
-            <motion.div
-              layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-4xl mx-auto bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-xl flex flex-col min-h-[80vh] border border-amber-100 dark:border-stone-700 relative z-10"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex-grow flex flex-col items-center justify-center">
-                  <div className="flex items-center justify-center gap-4">
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                      className="w-14 h-14 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0 dark:bg-brand/20"
-                    >
-                      <span className="text-3xl font-bold text-brand font-ruqaa">م</span>
-                    </motion.div>
-                    <div className="flex flex-col items-start">
-                      <h1 className="text-3xl md:text-4xl font-bold text-stone-800 dark:text-stone-100 font-ruqaa">
-                        معرب الجمل العربية
-                      </h1>
-                      <span className="text-sm font-medium text-stone-500 dark:text-stone-400 mt-1">
-                        علاء الوكيل
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2 shrink-0 items-end">
-                  <div className="flex gap-2">
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 p-2 rounded-xl transition-colors shadow-sm" title="تكبير الخط">+</motion.button>
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 p-2 rounded-xl transition-colors shadow-sm" title="تصغير الخط">-</motion.button>
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleLogout} className="bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 p-2 rounded-xl transition-colors shadow-sm flex items-center gap-2" title="تسجيل الخروج">
-                      <LogOut size={20} />
-                    </motion.button>
-                  </div>
+          {/* Sidebar */}
+          <aside className={`w-full md:w-[340px] bg-white border-b md:border-b-0 md:border-l border-stone-200 flex flex-col z-20 shrink-0 shadow-sm ${isTrial ? 'md:mt-14' : ''}`}>
+            <div className="p-6 border-b border-stone-100 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <motion.div 
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                  className="w-12 h-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0"
+                >
+                  <span className="text-2xl font-bold text-brand font-ruqaa">م</span>
+                </motion.div>
+                <div className="flex flex-col items-start">
+                  <h1 className="text-2xl font-bold text-stone-800 font-ruqaa whitespace-nowrap">
+                    معرب الجمل
+                  </h1>
+                  <span className="text-xs font-medium text-stone-500 mt-1 whitespace-nowrap">
+                    علاء الوكيل
+                  </span>
                 </div>
               </div>
+              
+              <div className="text-[10px] sm:text-xs text-stone-400 font-serif leading-relaxed text-left opacity-80 italic">
+                أنا البحرُ في أحشائِهِ الدُّرُّ كامنٌ<br/>
+                فهل سألوا الغوّاصَ عن صدفاتي؟
+              </div>
+            </div>
 
-            <div className="flex gap-3 mb-8 overflow-x-auto hide-scrollbar pb-2">
+            <nav className="flex-1 overflow-y-auto p-4 flex flex-row md:flex-col gap-2 overflow-x-auto hide-scrollbar">
               {[
-                { id: 'parser', label: 'النتيجة', icon: <AlignLeft size={18} /> },
-                { id: 'rules', label: 'البحث عن قاعدة', icon: <Search size={18} /> },
-                { id: 'poetry', label: 'أبيات شعرية', icon: <Feather size={18} /> },
-                { id: 'spelling', label: 'الإملاء الدقيق', icon: <Check size={18} /> },
-                { id: 'saved', label: 'المحفوظات', icon: <Bookmark size={18} /> }
+                { id: 'parser', label: 'النتيجة', icon: <AlignLeft size={20} /> },
+                { id: 'rules', label: 'البحث عن قاعدة', icon: <Search size={20} /> },
+                { id: 'poetry', label: 'أبيات شعرية', icon: <Feather size={20} /> },
+                { id: 'spelling', label: 'الإملاء الدقيق', icon: <Check size={20} /> },
+                { id: 'saved', label: 'المحفوظات', icon: <Bookmark size={20} /> }
               ].map((tab) => (
                 <motion.button
                   key={tab.id}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold transition-all whitespace-nowrap shadow-sm ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all whitespace-nowrap shadow-sm ${
                     activeTab === tab.id 
                       ? 'bg-brand text-white shadow-brand/20 border border-transparent' 
                       : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 hover:border-stone-300'
@@ -1033,7 +1020,32 @@ export default function App() {
                   {tab.label}
                 </motion.button>
               ))}
+            </nav>
+
+            <div className="p-4 border-t border-stone-100 flex flex-col gap-3">
+              <div className="flex gap-2">
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm flex justify-center items-center" title="تكبير الخط">+</motion.button>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm flex justify-center items-center" title="تصغير الخط">-</motion.button>
+              </div>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} className="w-full bg-red-50 hover:bg-red-100 text-red-600 p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 font-bold" title="تسجيل الخروج">
+                <LogOut size={20} />
+                تسجيل الخروج
+              </motion.button>
             </div>
+          </aside>
+
+          {/* Main Content */}
+          <main className={`flex-1 overflow-y-auto relative ${isTrial ? 'md:mt-14' : ''}`}>
+            {/* Subtle background pattern/gradient for main app */}
+            <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none"></div>
+            
+            <div className="p-4 md:p-8">
+              <motion.div
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-3xl shadow-xl flex flex-col min-h-[80vh] border border-amber-100 relative z-10"
+              >
 
             {activeTab === 'parser' && (
               <div className="fixed bottom-8 right-8 left-8 z-50 flex flex-row items-center justify-start gap-4 pointer-events-none">
@@ -1167,7 +1179,7 @@ export default function App() {
                       )}
                     </div>
 
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex flex-col md:flex-row gap-4 mt-2">
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex flex-row gap-4 mt-2">
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -1182,7 +1194,7 @@ export default function App() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={handleClear}
-                        className="md:w-auto w-full bg-white text-red-600 border-2 border-red-100 hover:bg-red-50 hover:border-red-200 text-lg font-bold px-5 py-4 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm"
+                        className="w-auto bg-white text-red-600 border-2 border-red-100 hover:bg-red-50 hover:border-red-200 text-lg font-bold px-5 py-4 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm"
                         title="مسح وبدء جديد"
                       >
                         <Trash2 size={24} />
@@ -1241,6 +1253,19 @@ export default function App() {
                   </motion.div>
                 ) : (
                   <motion.div key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex flex-col gap-6">
+                    {/* Analyzed Sentence Box */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-brand/5 border border-brand/10 rounded-2xl p-6 flex flex-col text-right shadow-sm mt-4 mx-2 md:mx-6"
+                      dir="rtl"
+                    >
+                      <span className="text-brand/60 text-sm font-bold mb-3">الجملة المحللة</span>
+                      <h2 className="text-2xl md:text-3xl font-serif font-bold text-stone-800 leading-relaxed">
+                        {sentence}
+                      </h2>
+                    </motion.div>
+
                     <div className="flex flex-col gap-4 bg-stone-50 p-4 rounded-2xl border border-stone-200">
                       <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex gap-2">
@@ -1303,55 +1328,104 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="w-full overflow-hidden">
-                        <div className="flex bg-stone-200 p-1 rounded-xl overflow-x-auto hide-scrollbar w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+                      <div className="w-full flex justify-center mt-16 mb-16 relative h-32">
+                        <div className="relative z-20 flex items-center justify-center w-20 h-20">
+                          {/* Pulsing background rings */}
+                          <motion.div
+                            animate={{ scale: showDisplayModes ? 1 : [1, 1.5, 1], opacity: showDisplayModes ? 0 : [0.5, 0, 0.5] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            className="absolute inset-0 bg-brand rounded-full z-0 pointer-events-none"
+                          />
+                          <motion.div
+                            animate={{ scale: showDisplayModes ? 1 : [1, 1.3, 1], opacity: showDisplayModes ? 0 : [0.8, 0, 0.8] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                            className="absolute inset-0 bg-brand rounded-full z-0 pointer-events-none"
+                          />
+                          
+                          {/* Radial Buttons */}
+                          {[
+                            { id: 'bubbles', icon: <MessageCircle size={20} />, label: 'فقاعات', angle: 25 },
+                            { id: 'table', icon: <Table size={20} />, label: 'جدول', angle: 68 },
+                            { id: 'cards', icon: <LayoutGrid size={20} />, label: 'بطاقات', angle: 112 },
+                            { id: 'separated', icon: <AlignJustify size={20} />, label: 'فواصل', angle: 155 }
+                          ].map((mode, index) => {
+                            const radius = 100;
+                            const radian = (mode.angle * Math.PI) / 180;
+                            const targetX = Math.cos(radian) * radius;
+                            const targetY = -Math.sin(radian) * radius;
+
+                            return (
+                              <motion.button
+                                key={mode.id}
+                                initial={false}
+                                animate={{ 
+                                  opacity: showDisplayModes ? 1 : 0, 
+                                  x: showDisplayModes ? targetX : 0, 
+                                  y: showDisplayModes ? targetY : 0, 
+                                  scale: showDisplayModes ? 1 : 0.5,
+                                  pointerEvents: showDisplayModes ? 'auto' : 'none'
+                                }}
+                                transition={{ type: "spring", stiffness: 260, damping: 20, delay: showDisplayModes ? index * 0.05 : 0 }}
+                                whileHover={{ scale: 1.1, zIndex: 40 }}
+                                onClick={() => {
+                                  setDisplayMode(mode.id as any);
+                                  setShowDisplayModes(false);
+                                }}
+                                className={`absolute w-16 h-16 rounded-full shadow-[0_8px_20px_rgb(0,0,0,0.15)] flex flex-col items-center justify-center gap-1 transition-colors z-10 border-2 ${displayMode === mode.id ? 'bg-brand text-white border-brand-light' : 'bg-white text-stone-600 hover:text-brand border-stone-100'}`}
+                                style={{ left: 'calc(50% - 32px)', top: 'calc(50% - 32px)' }}
+                                title={mode.label}
+                              >
+                                <motion.div
+                                  animate={showDisplayModes ? { y: [0, -3, 0] } : { y: 0 }}
+                                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: index * 0.2 }}
+                                  className="flex flex-col items-center gap-1"
+                                >
+                                  {mode.icon}
+                                  <span className="text-[10px] font-bold">{mode.label}</span>
+                                </motion.div>
+                              </motion.button>
+                            );
+                          })}
+
+                          {/* Main Button */}
                           <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setDisplayMode('bubbles')}
-                            className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'bubbles' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setShowDisplayModes(!showDisplayModes)}
+                            className="w-20 h-20 bg-gradient-to-br from-brand to-brand-light text-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] flex flex-col items-center justify-center gap-1 relative z-30 border-2 border-white/20"
                           >
-                            <MessageCircle size={18} /> فقاعات
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setDisplayMode('table')}
-                            className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'table' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
-                          >
-                            <Table size={18} /> جدول
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setDisplayMode('cards')}
-                            className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'cards' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
-                          >
-                            <LayoutGrid size={18} /> بطاقات
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setDisplayMode('separated')}
-                            className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${displayMode === 'separated' ? 'bg-white text-brand shadow-sm font-bold' : 'text-stone-600 hover:text-stone-800'}`}
-                          >
-                            <AlignJustify size={18} /> فواصل
+                            <motion.div
+                              animate={{ rotate: showDisplayModes ? 90 : 0 }}
+                              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                              className="flex flex-col items-center justify-center gap-1"
+                            >
+                              {showDisplayModes ? <X size={28} /> : (
+                                <>
+                                  {displayMode === 'bubbles' ? <MessageCircle size={24} /> :
+                                   displayMode === 'table' ? <Table size={24} /> :
+                                   displayMode === 'cards' ? <LayoutGrid size={24} /> :
+                                   <AlignJustify size={24} />}
+                                  <span className="font-bold text-[11px]">العرض</span>
+                                </>
+                              )}
+                            </motion.div>
                           </motion.button>
                         </div>
                       </div>
                     </div>
 
-                    <div className="overflow-x-auto bg-white rounded-2xl shadow-sm border border-stone-200 p-2">
-                      {displayMode === 'bubbles' ? (
+                    <div className="overflow-hidden bg-white rounded-2xl shadow-sm border border-stone-200 p-2">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={displayMode}
+                          initial={{ opacity: 0, x: -30 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 30 }}
+                          transition={{ duration: 0.3, ease: "easeInOut" }}
+                          className="w-full"
+                        >
+                          {displayMode === 'bubbles' ? (
                         <div className="flex flex-col gap-6 p-4">
-                          {/* Top Box: Analyzed Sentence */}
-                          <div className="bg-brand/5 border border-brand/10 rounded-2xl p-6 flex flex-col text-right shadow-sm">
-                            <span className="text-brand/60 text-sm font-bold mb-3">الجملة المحللة</span>
-                            <h2 className="text-2xl md:text-3xl font-serif font-bold text-stone-800 leading-relaxed">
-                              {sentence}
-                            </h2>
-                          </div>
-
                           {/* Middle Section: Legend & Info */}
                           <div className="flex flex-wrap items-center justify-center gap-4" dir="rtl">
                             <div className="flex flex-wrap justify-center gap-2">
@@ -1452,37 +1526,39 @@ export default function App() {
                           ))}
                         </div>
                       ) : displayMode === 'table' ? (
-                        <table className="w-full border-collapse text-right">
-                          <thead>
-                            <tr className="bg-stone-50 text-stone-800 border-b border-stone-200">
-                              <th className="p-4 font-bold" style={{ fontSize: '1.125em' }}>الكلمة</th>
-                              <th className="p-4 font-bold" style={{ fontSize: '1.125em' }}>التصنيف</th>
-                              <th className="p-4 font-bold" style={{ fontSize: '1.125em' }}>النتيجة</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {result.map((item, index) => (
-                              <motion.tr 
-                                layout
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                key={index} 
-                                className={`border-b border-stone-100 last:border-0 ${index % 2 === 0 ? 'bg-white' : 'bg-stone-50/50'}`}
-                              >
-                                <td className={`p-5 font-bold font-serif ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.5em' }}>
-                                  {colorizeDiacritics(item.word)}
-                                </td>
-                                <td className="p-5 font-medium" style={{ fontSize: '1.125em' }}>
-                                  <span className={`px-4 py-1.5 rounded-full border font-bold inline-block ${getCategoryStyles(item.category).badge}`} style={{ fontSize: '0.875em' }}>{item.category}</span>
-                                </td>
-                                <td className="p-5 text-stone-800 leading-relaxed" style={{ fontSize: '1.25em' }}>
-                                  {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
-                                </td>
-                              </motion.tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        <div className="w-full overflow-x-auto hide-scrollbar rounded-2xl border border-stone-200">
+                          <table className="w-full border-collapse text-right min-w-[600px]">
+                            <thead>
+                              <tr className="bg-stone-50 text-stone-800 border-b border-stone-200">
+                                <th className="p-4 font-bold whitespace-nowrap" style={{ fontSize: '1.125em' }}>الكلمة</th>
+                                <th className="p-4 font-bold whitespace-nowrap" style={{ fontSize: '1.125em' }}>التصنيف</th>
+                                <th className="p-4 font-bold" style={{ fontSize: '1.125em' }}>النتيجة</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {result.map((item, index) => (
+                                <motion.tr 
+                                  layout
+                                  initial={{ opacity: 0, x: -20 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: index * 0.1 }}
+                                  key={index} 
+                                  className={`border-b border-stone-100 last:border-0 ${index % 2 === 0 ? 'bg-white' : 'bg-stone-50/50'}`}
+                                >
+                                  <td className={`p-5 font-bold font-serif whitespace-nowrap ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.5em' }}>
+                                    {colorizeDiacritics(item.word)}
+                                  </td>
+                                  <td className="p-5 font-medium whitespace-nowrap" style={{ fontSize: '1.125em' }}>
+                                    <span className={`px-4 py-1.5 rounded-full border font-bold inline-block ${getCategoryStyles(item.category).badge}`} style={{ fontSize: '0.875em' }}>{item.category}</span>
+                                  </td>
+                                  <td className="p-5 text-stone-800 leading-relaxed min-w-[300px]" style={{ fontSize: '1.25em' }}>
+                                    {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
+                                  </td>
+                                </motion.tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       ) : (
                         <div className="space-y-4 p-4">
                           {result.map((item, index) => (
@@ -1509,6 +1585,8 @@ export default function App() {
                           ))}
                         </div>
                       )}
+                        </motion.div>
+                      </AnimatePresence>
                     </div>
                   </motion.div>
                 )}
@@ -1767,8 +1845,9 @@ export default function App() {
             )}
 
           </AnimatePresence>
-          </motion.div>
-          </div>
+              </motion.div>
+            </div>
+          </main>
         </div>
       )}
     </ErrorBoundary>
