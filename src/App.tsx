@@ -274,6 +274,11 @@ const loadingMessages = [
   "نضع اللمسات الأخيرة... ✨"
 ];
 
+interface AccessCode {
+  code: string;
+  expiresAt: number;
+}
+
 const generateRandomCode = () => Math.floor(10000 + Math.random() * 90000).toString();
 
 function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
@@ -281,16 +286,21 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
   const [error, setError] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [validCodes, setValidCodes] = useState<string[]>([]);
+  const [validCodes, setValidCodes] = useState<AccessCode[]>([]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(doc(db, 'settings', 'access'), (docSnap) => {
       if (docSnap.exists()) {
-        setValidCodes(docSnap.data().codes || []);
+        const data = docSnap.data();
+        if (data.codes && data.codes.length > 0 && typeof data.codes[0] === 'string') {
+          setValidCodes(data.codes.map((c: string) => ({ code: c, expiresAt: Date.now() + 60 * 60 * 1000 })));
+        } else {
+          setValidCodes(data.codes || []);
+        }
       } else {
         // Initialize if not exists
         const initialCode = generateRandomCode();
-        setDoc(doc(db, 'settings', 'access'), { codes: [initialCode] });
+        setDoc(doc(db, 'settings', 'access'), { codes: [{ code: initialCode, expiresAt: Date.now() + 60 * 60 * 1000 }] });
       }
     });
     return () => unsubscribe();
@@ -298,7 +308,9 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
 
   const handleGenerateNewCode = async () => {
     const newCode = generateRandomCode();
-    await setDoc(doc(db, 'settings', 'access'), { codes: [newCode] });
+    const activeCodes = validCodes.filter(c => c.expiresAt > Date.now());
+    const newCodes = [{ code: newCode, expiresAt: Date.now() + 60 * 60 * 1000 }, ...activeCodes];
+    await setDoc(doc(db, 'settings', 'access'), { codes: newCodes });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -306,9 +318,9 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
     if (code === '2020') {
       setShowAdmin(true);
       setError(false);
-    } else if (code === '2323') {
+    } else if (code === '6060') {
       onLogin(false);
-    } else if (validCodes.includes(code)) {
+    } else if (validCodes.some(c => c.code === code && c.expiresAt > Date.now())) {
       onLogin(true); // 1-hour access for valid generated codes
     } else {
       setError(true);
@@ -327,7 +339,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
           <h2 className="text-2xl font-bold text-white mb-6">لوحة الإدارة - توليد الأكواد</h2>
           <p className="text-emerald-200/70 mb-4">أحدث كود دخول صالح هو:</p>
           <div className="bg-emerald-900/30 border-2 border-emerald-700/50 rounded-2xl p-6 mb-4">
-            <span className="text-5xl font-bold text-emerald-400 tracking-widest">{validCodes[0] || '...'}</span>
+            <span className="text-5xl font-bold text-emerald-400 tracking-widest">{validCodes[0]?.code || '...'}</span>
           </div>
           
           <motion.button
@@ -369,36 +381,39 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
       <motion.div 
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-[#11221e] p-8 md:p-10 rounded-[2rem] shadow-2xl w-full max-w-[400px] border border-emerald-800/20 relative z-10"
+        className="bg-[#11221e] p-6 md:p-8 rounded-[2rem] shadow-2xl w-full max-w-[400px] border border-emerald-800/20 relative z-10"
       >
-        <div className="flex flex-col items-center mb-10">
+        <div className="flex flex-col items-center mb-4">
           <motion.div 
             animate={{ rotate: 360 }}
             transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-            className="w-24 h-24 rounded-full border border-emerald-700/50 flex items-center justify-center mb-6 bg-emerald-900/20"
+            className="w-20 h-20 rounded-full border border-emerald-700/50 flex items-center justify-center mb-4 bg-emerald-900/20"
           >
-            <span className="text-5xl font-bold text-emerald-400 font-ruqaa">ع</span>
+            <span className="text-4xl font-bold text-emerald-400 font-ruqaa">ع</span>
           </motion.div>
-          <h1 className="text-3xl font-bold text-white font-sans text-center mb-2">
+          <h1 className="text-2xl font-bold text-white font-sans text-center mb-1">
             معرب الجمل العربية
           </h1>
-          <p className="text-emerald-500 text-center text-sm font-medium mb-6">
+          <p className="text-emerald-500 text-center text-sm font-medium mb-1">
             المحلل النحوي الذكي
+          </p>
+          <p className="text-emerald-400 text-center text-xs font-medium mb-4 opacity-80">
+            اعداد أ/علاء الوكيل - معلم خبير
           </p>
 
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-emerald-900/30 border border-emerald-700/30 rounded-xl p-4 mb-6 text-center"
+            className="bg-emerald-900/30 border border-emerald-700/30 rounded-xl p-3 w-full text-center"
           >
-            <p className="text-emerald-200 text-sm mb-1">إهداء خاص إلى</p>
-            <h2 className="text-2xl font-bold text-white font-ruqaa mb-1">أ/ هالة بلال</h2>
-            <p className="text-emerald-400 text-sm font-medium">الموجه الأول بإدارة سوهاج التعليمية</p>
+            <p className="text-emerald-200 text-xs mb-1">إهداء خاص إلى</p>
+            <h2 className="text-xl font-bold text-white font-ruqaa mb-1">أ/ هالة بلال</h2>
+            <p className="text-emerald-400 text-xs font-medium">الموجه الأول بإدارة سوهاج التعليمية</p>
           </motion.div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <label className="text-emerald-500 text-sm font-bold px-1">اكتب كود الدخول</label>
             <div className={`relative flex items-center bg-white rounded-2xl overflow-hidden transition-all ${error ? 'ring-2 ring-red-500' : 'focus-within:ring-2 focus-within:ring-emerald-500'}`}>
@@ -412,7 +427,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
                   setCode(e.target.value);
                   setError(false);
                 }}
-                className="flex-1 py-4 bg-transparent outline-none text-stone-800 text-lg font-medium tracking-widest"
+                className="flex-1 py-3 bg-transparent outline-none text-stone-800 text-lg font-medium tracking-widest"
                 dir="ltr"
                 placeholder="•••••"
                 maxLength={5}
@@ -434,7 +449,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-red-500 text-xs mt-1 px-1 font-bold"
               >
-                الرجاء إدخال كود صحيح مكون من 5 أرقام
+                الكود خطا اتصل بالدعم الفنى
               </motion.p>
             )}
           </div>
@@ -443,13 +458,13 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             type="submit"
-            className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-bold py-4 rounded-2xl transition-all text-lg flex items-center justify-center gap-2 mt-2"
+            className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-bold py-3 rounded-2xl transition-all text-lg flex items-center justify-center gap-2"
           >
             دخول <Feather size={20} className="rotate-45" />
           </motion.button>
         </form>
 
-        <div className="mt-8 text-center">
+        <div className="mt-6 text-center">
           <a 
             href="https://wa.me/201030302005" 
             target="_blank" 
