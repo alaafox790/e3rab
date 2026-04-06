@@ -377,7 +377,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
             transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
             className="w-24 h-24 rounded-full border border-emerald-700/50 flex items-center justify-center mb-6 bg-emerald-900/20"
           >
-            <span className="text-5xl font-bold text-emerald-400 font-ruqaa">م</span>
+            <span className="text-5xl font-bold text-emerald-400 font-ruqaa">ع</span>
           </motion.div>
           <h1 className="text-3xl font-bold text-white font-sans text-center mb-2">
             معرب الجمل العربية
@@ -1007,7 +1007,7 @@ export default function App() {
                   transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                   className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0"
                 >
-                  <span className="text-xl md:text-2xl font-bold text-brand font-ruqaa">م</span>
+                  <span className="text-xl md:text-2xl font-bold text-brand font-ruqaa">ع</span>
                 </motion.div>
                 <div className="flex flex-col items-start">
                   <h1 className="text-xl md:text-2xl font-bold text-stone-800 font-ruqaa whitespace-nowrap">
