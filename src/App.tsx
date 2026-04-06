@@ -234,15 +234,26 @@ function Splash({ onComplete }: { onComplete: () => void }) {
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.8 }}
-          className="text-white/90 text-lg md:text-xl font-medium text-center drop-shadow-md mb-8"
+          className="text-white/90 text-lg md:text-xl font-medium text-center drop-shadow-md mb-6"
         >
           إعداد وتصميم أ/ علاء الوكيل
         </motion.p>
+
+        <motion.div
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.8 }}
+          className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-5 text-center max-w-md w-full shadow-xl"
+        >
+          <p className="text-emerald-100 text-sm mb-2">إهداء خاص إلى</p>
+          <h2 className="text-3xl font-bold text-white font-ruqaa mb-2 drop-shadow-md">أ/ هالة بلال</h2>
+          <p className="text-emerald-200 text-base font-medium">الموجه الأول بإدارة سوهاج التعليمية</p>
+        </motion.div>
         
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.8 }}
+          transition={{ delay: 1.0, duration: 0.8 }}
           className="flex gap-3 mt-8"
         >
           <div className="w-3 h-3 rounded-full bg-white/80"></div>
@@ -371,14 +382,25 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
           <h1 className="text-3xl font-bold text-white font-sans text-center mb-2">
             معرب الجمل العربية
           </h1>
-          <p className="text-emerald-500 text-center text-sm font-medium">
+          <p className="text-emerald-500 text-center text-sm font-medium mb-6">
             المحلل النحوي الذكي
           </p>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-emerald-900/30 border border-emerald-700/30 rounded-xl p-4 mb-6 text-center"
+          >
+            <p className="text-emerald-200 text-sm mb-1">إهداء خاص إلى</p>
+            <h2 className="text-2xl font-bold text-white font-ruqaa mb-1">أ/ هالة بلال</h2>
+            <p className="text-emerald-400 text-sm font-medium">الموجه الأول بإدارة سوهاج التعليمية</p>
+          </motion.div>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <label className="text-emerald-500 text-sm font-bold px-1">أدخل أي كود مكون من 5 أرقام للوصول</label>
+            <label className="text-emerald-500 text-sm font-bold px-1">اكتب كود الدخول</label>
             <div className={`relative flex items-center bg-white rounded-2xl overflow-hidden transition-all ${error ? 'ring-2 ring-red-500' : 'focus-within:ring-2 focus-within:ring-emerald-500'}`}>
               <div className="px-4 text-emerald-400">
                 <Lock size={20} />
@@ -427,10 +449,16 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
           </motion.button>
         </form>
 
-        <div className="mt-10 text-center">
-          <p className="text-emerald-800/60 text-xs font-medium">
-            مدعوم بتقنية Google Gemini AI
-          </p>
+        <div className="mt-8 text-center">
+          <a 
+            href="https://wa.me/201030302005" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-600 font-medium transition-colors bg-emerald-50 px-4 py-2 rounded-full text-sm border border-emerald-100"
+          >
+            <MessageCircle size={16} />
+            لطلب كود اتصل بالدعم واتس: 01030302005
+          </a>
         </div>
       </motion.div>
     </div>
@@ -1245,10 +1273,6 @@ export default function App() {
                           />
                         ))}
                       </div>
-                      
-                      <p className="text-sm text-stone-500 mt-2 font-medium">
-                        يتم تحليل الجملة بواسطة Google Gemini AI
-                      </p>
                     </div>
                   </motion.div>
                 ) : (
