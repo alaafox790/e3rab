@@ -238,17 +238,6 @@ function Splash({ onComplete }: { onComplete: () => void }) {
         >
           إعداد وتصميم أ/ علاء الوكيل
         </motion.p>
-
-        <motion.div
-          initial={{ y: 10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.7, duration: 0.8 }}
-          className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-5 text-center max-w-md w-full shadow-xl"
-        >
-          <p className="text-emerald-100 text-sm mb-2">إهداء خاص إلى</p>
-          <h2 className="text-3xl font-bold text-white font-ruqaa mb-2 drop-shadow-md">أ/ هالة بلال</h2>
-          <p className="text-emerald-200 text-base font-medium">الموجه الأول بإدارة سوهاج التعليمية</p>
-        </motion.div>
         
         <motion.div 
           initial={{ opacity: 0 }}
@@ -405,16 +394,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
             اعداد أ/علاء الوكيل - معلم خبير
           </p>
 
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-emerald-900/30 border border-emerald-700/30 rounded-xl p-3 w-full text-center"
-          >
-            <p className="text-emerald-200 text-xs mb-1">إهداء خاص إلى</p>
-            <h2 className="text-xl font-bold text-white font-ruqaa mb-1">أ/ هالة بلال</h2>
-            <p className="text-emerald-400 text-xs font-medium">الموجه الأول بإدارة سوهاج التعليمية</p>
-          </motion.div>
+
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
