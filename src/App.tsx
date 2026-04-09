@@ -269,7 +269,7 @@ const loadingMessages = [
   "جاري تحليل الجملة... ⏳",
   "جاري استخراج القواعد النحوية... 🔍",
   "جاري تحديد المواقع... 📍",
-  "جاري صياغة النتيجة التفصيلية... ✍️",
+  "جاري صياغة الإعراب التفصيلي... ✍️",
   "جاري رفع الصورة... 🖼️",
   "نضع اللمسات الأخيرة... ✨"
 ];
@@ -315,11 +315,15 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const numericCode = parseInt(code, 10);
+    
     if (code === '2020') {
       setShowAdmin(true);
       setError(false);
     } else if (code === '6060') {
       onLogin(false);
+    } else if (numericCode >= 100 && numericCode <= 120 && code === numericCode.toString()) {
+      onLogin(true); // Permanent access for codes 100-120
     } else if (validCodes.some(c => c.code === code && c.expiresAt > Date.now())) {
       onLogin(true); // 1-hour access for valid generated codes
     } else {
@@ -547,7 +551,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [sentence, setSentence] = useState('');
   const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare' | 'detailed'>('full');
-  const [displayMode, setDisplayMode] = useState<'table' | 'separated' | 'cards' | 'bubbles'>('bubbles');
+  const [displayMode, setDisplayMode] = useState<'table' | 'separated' | 'cards' | 'bubbles'>('cards');
   const [showDisplayModes, setShowDisplayModes] = useState(false);
   const [selectedBubble, setSelectedBubble] = useState<number | null>(null);
 
@@ -1042,7 +1046,7 @@ export default function App() {
 
             <nav className="flex-1 overflow-y-auto p-4 flex flex-row md:flex-col gap-2 overflow-x-auto hide-scrollbar">
               {[
-                { id: 'parser', label: 'النتيجة', icon: <AlignLeft size={20} /> },
+                { id: 'parser', label: 'إعرب', icon: <AlignLeft size={20} /> },
                 { id: 'rules', label: 'البحث عن قاعدة', icon: <Search size={20} /> },
                 { id: 'poetry', label: 'أبيات شعرية', icon: <Feather size={20} /> },
                 { id: 'spelling', label: 'الإملاء الدقيق', icon: <Check size={20} /> },
@@ -1231,7 +1235,7 @@ export default function App() {
                         className={`flex-1 text-white text-xl font-bold px-5 py-4 rounded-xl flex items-center justify-center gap-3 transition-all shadow-lg ${!sentence && !image ? 'bg-stone-300 cursor-not-allowed' : 'bg-brand hover:bg-brand-light hover:shadow-brand/30'}`}
                       >
                         <Search size={28} />
-                        النتيجة
+                        إعرب
                       </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.02 }}
@@ -1344,7 +1348,7 @@ export default function App() {
                             className={`bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm ${saveSuccess ? 'text-green-600 border-green-200 bg-green-50' : ''}`}
                           >
                             {isSaving ? <Loader2 size={18} className="animate-spin" /> : saveSuccess ? <Check size={18} /> : <Save size={18} />}
-                            {saveSuccess ? 'تم الحفظ' : 'حفظ النتيجة'}
+                            {saveSuccess ? 'تم الحفظ' : 'حفظ الإعراب'}
                           </motion.button>
                           <motion.button 
                             whileHover={{ scale: 1.05 }}
@@ -1367,88 +1371,25 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="w-full flex justify-center mt-16 mb-16 relative h-32">
-                        <div className="relative z-20 flex items-center justify-center w-20 h-20">
-                          {/* Pulsing background rings */}
-                          <motion.div
-                            animate={{ scale: showDisplayModes ? 1 : [1, 1.5, 1], opacity: showDisplayModes ? 0 : [0.5, 0, 0.5] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute inset-0 bg-brand rounded-full z-0 pointer-events-none"
-                          />
-                          <motion.div
-                            animate={{ scale: showDisplayModes ? 1 : [1, 1.3, 1], opacity: showDisplayModes ? 0 : [0.8, 0, 0.8] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                            className="absolute inset-0 bg-brand rounded-full z-0 pointer-events-none"
-                          />
-                          
-                          {/* Radial Buttons */}
+                      <div className="w-full flex justify-center mt-8 mb-8">
+                        <div className="bg-stone-100 p-1.5 rounded-2xl flex items-center gap-1 shadow-inner overflow-x-auto max-w-full">
                           {[
-                            { id: 'bubbles', icon: <MessageCircle size={20} />, label: 'فقاعات', angle: 25 },
-                            { id: 'table', icon: <Table size={20} />, label: 'جدول', angle: 68 },
-                            { id: 'cards', icon: <LayoutGrid size={20} />, label: 'بطاقات', angle: 112 },
-                            { id: 'separated', icon: <AlignJustify size={20} />, label: 'فواصل', angle: 155 }
-                          ].map((mode, index) => {
-                            const radius = 100;
-                            const radian = (mode.angle * Math.PI) / 180;
-                            const targetX = Math.cos(radian) * radius;
-                            const targetY = -Math.sin(radian) * radius;
-
-                            return (
-                              <motion.button
-                                key={mode.id}
-                                initial={false}
-                                animate={{ 
-                                  opacity: showDisplayModes ? 1 : 0, 
-                                  x: showDisplayModes ? targetX : 0, 
-                                  y: showDisplayModes ? targetY : 0, 
-                                  scale: showDisplayModes ? 1 : 0.5,
-                                  pointerEvents: showDisplayModes ? 'auto' : 'none'
-                                }}
-                                transition={{ type: "spring", stiffness: 260, damping: 20, delay: showDisplayModes ? index * 0.05 : 0 }}
-                                whileHover={{ scale: 1.1, zIndex: 40 }}
-                                onClick={() => {
-                                  setDisplayMode(mode.id as any);
-                                  setShowDisplayModes(false);
-                                }}
-                                className={`absolute w-16 h-16 rounded-full shadow-[0_8px_20px_rgb(0,0,0,0.15)] flex flex-col items-center justify-center gap-1 transition-colors z-10 border-2 ${displayMode === mode.id ? 'bg-brand text-white border-brand-light' : 'bg-white text-stone-600 hover:text-brand border-stone-100'}`}
-                                style={{ left: 'calc(50% - 32px)', top: 'calc(50% - 32px)' }}
-                                title={mode.label}
-                              >
-                                <motion.div
-                                  animate={showDisplayModes ? { y: [0, -3, 0] } : { y: 0 }}
-                                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: index * 0.2 }}
-                                  className="flex flex-col items-center gap-1"
-                                >
-                                  {mode.icon}
-                                  <span className="text-[10px] font-bold">{mode.label}</span>
-                                </motion.div>
-                              </motion.button>
-                            );
-                          })}
-
-                          {/* Main Button */}
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setShowDisplayModes(!showDisplayModes)}
-                            className="w-20 h-20 bg-gradient-to-br from-brand to-brand-light text-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] flex flex-col items-center justify-center gap-1 relative z-30 border-2 border-white/20"
-                          >
-                            <motion.div
-                              animate={{ rotate: showDisplayModes ? 90 : 0 }}
-                              transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                              className="flex flex-col items-center justify-center gap-1"
+                            { id: 'cards', icon: <LayoutGrid size={18} />, label: 'بطاقات' },
+                            { id: 'bubbles', icon: <MessageCircle size={18} />, label: 'فقاعات' },
+                            { id: 'table', icon: <Table size={18} />, label: 'جدول' },
+                            { id: 'separated', icon: <AlignJustify size={18} />, label: 'فواصل' }
+                          ].map((mode) => (
+                            <motion.button
+                              key={mode.id}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => setDisplayMode(mode.id as any)}
+                              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all whitespace-nowrap ${displayMode === mode.id ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700 hover:bg-stone-200/50'}`}
                             >
-                              {showDisplayModes ? <X size={28} /> : (
-                                <>
-                                  {displayMode === 'bubbles' ? <MessageCircle size={24} /> :
-                                   displayMode === 'table' ? <Table size={24} /> :
-                                   displayMode === 'cards' ? <LayoutGrid size={24} /> :
-                                   <AlignJustify size={24} />}
-                                  <span className="font-bold text-[11px]">العرض</span>
-                                </>
-                              )}
-                            </motion.div>
-                          </motion.button>
+                              {mode.icon}
+                              <span>{mode.label}</span>
+                            </motion.button>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -1571,7 +1512,7 @@ export default function App() {
                               <tr className="bg-stone-50 text-stone-800 border-b border-stone-200">
                                 <th className="p-4 font-bold whitespace-nowrap" style={{ fontSize: '1.125em' }}>الكلمة</th>
                                 <th className="p-4 font-bold whitespace-nowrap" style={{ fontSize: '1.125em' }}>التصنيف</th>
-                                <th className="p-4 font-bold" style={{ fontSize: '1.125em' }}>النتيجة</th>
+                                <th className="p-4 font-bold" style={{ fontSize: '1.125em' }}>الإعراب</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1873,7 +1814,7 @@ export default function App() {
                             }}
                             className="text-brand hover:text-brand-light font-bold flex items-center gap-1"
                           >
-                            عرض النتيجة <ArrowRight size={16} className="rotate-180" />
+                            عرض الإعراب <ArrowRight size={16} className="rotate-180" />
                           </motion.button>
                         </div>
                       </motion.div>
