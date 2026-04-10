@@ -303,14 +303,14 @@ function Splash({ onComplete }: { onComplete: () => void }) {
         </motion.p>
         
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.7, duration: 0.8 }}
-          className="text-white text-center mb-8 bg-white/10 px-8 py-4 rounded-3xl backdrop-blur-sm border border-white/20 shadow-xl"
+          className="text-white text-center mb-10 bg-white/15 px-10 py-8 rounded-[3rem] backdrop-blur-md border-2 border-white/30 shadow-2xl"
         >
-          <p className="text-sm opacity-80 mb-1">إهداء خاص إلى الموجه الأول</p>
-          <p className="text-2xl font-bold mb-1">الأستاذة هالة بلال</p>
-          <p className="text-xs opacity-70">موجه أول اللغة العربية - إدارة سوهاج التعليمية</p>
+          <p className="text-xl opacity-90 mb-3 font-medium">إهداء خاص إلى الموجه الأول</p>
+          <p className="text-4xl md:text-5xl font-bold mb-3 tracking-tight drop-shadow-lg">الأستاذة هالة بلال</p>
+          <p className="text-lg opacity-80 font-medium">موجه أول اللغة العربية - إدارة سوهاج التعليمية</p>
         </motion.div>
         
         <motion.div 
@@ -452,11 +452,11 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
       >
         <div className="flex flex-col items-center mb-4">
           <motion.div 
-            animate={{ rotate: 360 }}
-            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-            className="w-20 h-20 rounded-full border border-emerald-700/50 flex items-center justify-center mb-4 bg-emerald-900/20"
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="w-20 h-20 rounded-full border border-emerald-400/30 flex items-center justify-center mb-4 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
           >
-            <span className="text-4xl font-bold text-emerald-400 font-ruqaa">ع</span>
+            <span className="text-4xl font-bold text-emerald-300 font-ruqaa">ع</span>
           </motion.div>
           <h1 className="text-2xl font-bold text-white font-sans text-center mb-1">
             معرب الجمل العربية
@@ -467,11 +467,11 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
           <p className="text-emerald-200 text-center text-xs font-medium mb-1 opacity-80">
             اعداد أ/علاء الوكيل - معلم خبير
           </p>
-          <div className="mt-4 mb-6 px-6 py-4 bg-emerald-800/40 rounded-2xl border border-emerald-400/30 text-center shadow-lg">
-            <p className="text-emerald-100 font-serif leading-relaxed">
-              <span className="text-sm block mb-1 opacity-90">إهداء خاص إلى الموجه الأول</span>
-              <span className="font-bold text-emerald-300 text-xl block mb-1">الأستاذة هالة بلال</span>
-              <span className="text-xs block opacity-80">موجه أول اللغة العربية - إدارة سوهاج التعليمية</span>
+          <div className="mt-4 mb-6 px-6 py-6 bg-emerald-800/60 rounded-[2.5rem] border-2 border-emerald-300/40 text-center shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+            <p className="text-emerald-50 font-serif leading-relaxed">
+              <span className="text-lg block mb-2 opacity-95 font-medium">إهداء خاص إلى الموجه الأول</span>
+              <span className="font-bold text-emerald-200 text-3xl block mb-2 drop-shadow-sm">الأستاذة هالة بلال</span>
+              <span className="text-sm block opacity-90 font-medium">موجه أول اللغة العربية - إدارة سوهاج التعليمية</span>
             </p>
           </div>
 
@@ -1182,11 +1182,11 @@ export default function App() {
               </div>
               <div className="flex items-center gap-3 md:gap-4">
                 <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                  className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0"
+                  animate={{ scale: [1, 1.08, 1] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center shadow-sm shrink-0"
                 >
-                  <span className="text-xl md:text-2xl font-bold text-brand font-ruqaa">ع</span>
+                  <span className="text-xl md:text-2xl font-bold text-emerald-600 font-ruqaa">ع</span>
                 </motion.div>
                 <div className="flex flex-col items-start">
                   <h1 className="text-xl md:text-2xl font-bold text-emerald-800 font-ruqaa whitespace-nowrap">
