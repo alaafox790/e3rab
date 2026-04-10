@@ -1,7 +1,38 @@
 import { AnalyzedWord, SpellingResult } from "../types";
 
-// نظام تخزين مؤقت لحفظ النتائج السابقة وتقليل الضغط على السيرفر
-const apiCache = new Map<string, any>();
+// نظام تخزين مؤقت متطور يحفظ النتائج في localStorage لسرعة الوصول وتقليل استهلاك الـ API
+const CACHE_NAME = 'arabic_grammar_app_cache_v1';
+const MAX_CACHE_ITEMS = 50;
+
+const getPersistentCache = (): Map<string, any> => {
+  try {
+    const saved = localStorage.getItem(CACHE_NAME);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return new Map(parsed);
+    }
+  } catch (e) {
+    console.warn("Failed to load cache from localStorage", e);
+  }
+  return new Map();
+};
+
+const savePersistentCache = (cache: Map<string, any>) => {
+  try {
+    // الحفاظ على حجم معقول للتخزين المؤقت
+    if (cache.size > MAX_CACHE_ITEMS) {
+      const keys = Array.from(cache.keys());
+      for (let i = 0; i < cache.size - MAX_CACHE_ITEMS; i++) {
+        cache.delete(keys[i]);
+      }
+    }
+    localStorage.setItem(CACHE_NAME, JSON.stringify(Array.from(cache.entries())));
+  } catch (e) {
+    console.warn("Failed to save cache to localStorage", e);
+  }
+};
+
+const apiCache = getPersistentCache();
 
 export async function analyzeSentence(
   sentence: string, 
@@ -15,7 +46,10 @@ export async function analyzeSentence(
   
   if (apiCache.has(cacheKey)) {
     const cached = apiCache.get(cacheKey);
-    if (onChunk) onChunk(cached);
+    if (onChunk) {
+      // محاكاة التدفق للنتائج المخزنة لتحسين تجربة المستخدم
+      onChunk(cached);
+    }
     return cached;
   }
 
@@ -80,6 +114,7 @@ export async function analyzeSentence(
     }
 
     apiCache.set(cacheKey, finalResult);
+    savePersistentCache(apiCache);
     return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);
@@ -121,6 +156,7 @@ export async function searchGrammarRule(ruleName: string, retryCount = 0): Promi
     const data = JSON.parse(text);
     const finalResult = data.text || 'عذراً، لم أتمكن من العثور على شرح لهذه القاعدة.';
     apiCache.set(cacheKey, finalResult);
+    savePersistentCache(apiCache);
     return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);
@@ -156,6 +192,7 @@ export async function analyzePoetry(verse: string, retryCount = 0): Promise<stri
     const data = JSON.parse(text);
     const finalResult = data.text || 'عذراً، لم أتمكن من تحليل هذا البيت.';
     apiCache.set(cacheKey, finalResult);
+    savePersistentCache(apiCache);
     return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);
@@ -194,6 +231,7 @@ export async function analyzeSpelling(text: string, retryCount = 0): Promise<Spe
       corrections: data.corrections || []
     };
     apiCache.set(cacheKey, finalResult);
+    savePersistentCache(apiCache);
     return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);
@@ -229,6 +267,7 @@ export async function generateDictation(ruleName: string, retryCount = 0): Promi
     const data = JSON.parse(text);
     const finalResult = data.text || 'عذراً، لم أتمكن من إنشاء قطعة إملاء.';
     apiCache.set(cacheKey, finalResult);
+    savePersistentCache(apiCache);
     return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);

@@ -75,8 +75,8 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-stone-100 p-4" dir="rtl">
-          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg text-center">
+        <div className="min-h-screen flex items-center justify-center bg-emerald-50 p-4" dir="rtl">
+          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg text-center border border-emerald-100">
             <h2 className="text-2xl font-bold text-red-600 mb-4">عذراً، حدث خطأ غير متوقع!</h2>
             <p className="text-stone-600 mb-6">واجه التطبيق مشكلة أثناء عرض البيانات. يرجى تحديث الصفحة والمحاولة مرة أخرى.</p>
             <motion.button 
@@ -214,11 +214,11 @@ const AnalysisText = ({ text }: { text: string }) => {
       {parts.map((part, index) => {
         if (grammaticalTerms[part]) {
           return (
-            <span key={index} className="relative group inline-block cursor-help border-b-2 border-dotted border-brand/50 hover:text-brand transition-colors">
+            <span key={index} className="relative group inline-block cursor-help border-b-2 border-dotted border-emerald-400/50 hover:text-emerald-600 transition-colors">
               {colorizeDiacritics(part)}
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-stone-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center shadow-lg font-sans font-normal leading-relaxed">
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-emerald-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center shadow-lg font-sans font-normal leading-relaxed">
                 {grammaticalTerms[part]}
-                <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-stone-800"></span>
+                <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-emerald-800"></span>
               </span>
             </span>
           );
@@ -297,10 +297,21 @@ function Splash({ onComplete }: { onComplete: () => void }) {
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.8 }}
-          className="text-white/90 text-lg md:text-xl font-medium text-center drop-shadow-md mb-6"
+          className="text-white/90 text-lg md:text-xl font-medium text-center drop-shadow-md mb-2"
         >
           إعداد وتصميم أ/ علاء الوكيل
         </motion.p>
+        
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.8 }}
+          className="text-white text-center mb-8 bg-white/10 px-8 py-4 rounded-3xl backdrop-blur-sm border border-white/20 shadow-xl"
+        >
+          <p className="text-sm opacity-80 mb-1">إهداء خاص إلى الموجه الأول</p>
+          <p className="text-2xl font-bold mb-1">الأستاذة هالة بلال</p>
+          <p className="text-xs opacity-70">موجه أول اللغة العربية - إدارة سوهاج التعليمية</p>
+        </motion.div>
         
         <motion.div 
           initial={{ opacity: 0 }}
@@ -372,7 +383,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
     if (code === '2020') {
       setShowAdmin(true);
       setError(false);
-    } else if (code === '6060') {
+    } else if (code === '555') {
       onLogin(false);
     } else if (numericCode >= 100 && numericCode <= 120 && code === numericCode.toString()) {
       onLogin(true); // Permanent access for codes 100-120
@@ -386,16 +397,16 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
 
   if (showAdmin) {
     return (
-      <div className="min-h-screen bg-[#0d1b18] flex items-center justify-center p-4 font-sans" dir="rtl">
+      <div className="min-h-screen bg-[#064e3b] flex items-center justify-center p-4 font-sans" dir="rtl">
         <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-[#152a25] p-8 rounded-3xl shadow-xl w-full max-w-md border border-emerald-800/30 text-center"
+          className="bg-[#065f46] p-8 rounded-3xl shadow-xl w-full max-w-md border border-emerald-400/30 text-center"
         >
           <h2 className="text-2xl font-bold text-white mb-6">لوحة الإدارة - توليد الأكواد</h2>
           <p className="text-emerald-200/70 mb-4">أحدث كود دخول صالح هو:</p>
-          <div className="bg-emerald-900/30 border-2 border-emerald-700/50 rounded-2xl p-6 mb-4">
-            <span className="text-5xl font-bold text-emerald-400 tracking-widest">{validCodes[0]?.code || '...'}</span>
+          <div className="bg-emerald-800/30 border-2 border-emerald-500/50 rounded-2xl p-6 mb-4">
+            <span className="text-5xl font-bold text-emerald-300 tracking-widest">{validCodes[0]?.code || '...'}</span>
           </div>
           
           <motion.button
@@ -430,14 +441,14 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1b18] flex items-center justify-center p-4 font-sans relative overflow-hidden" dir="rtl">
+    <div className="min-h-screen bg-[#064e3b] flex items-center justify-center p-4 font-sans relative overflow-hidden" dir="rtl">
       {/* Subtle background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-emerald-900/20 blur-[100px] pointer-events-none"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[100px] pointer-events-none"></div>
 
       <motion.div 
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-[#11221e] p-6 md:p-8 rounded-[2rem] shadow-2xl w-full max-w-[400px] border border-emerald-800/20 relative z-10"
+        className="bg-[#065f46] p-6 md:p-8 rounded-[2rem] shadow-2xl w-full max-w-[400px] border border-emerald-400/20 relative z-10"
       >
         <div className="flex flex-col items-center mb-4">
           <motion.div 
@@ -450,21 +461,28 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
           <h1 className="text-2xl font-bold text-white font-sans text-center mb-1">
             معرب الجمل العربية
           </h1>
-          <p className="text-emerald-500 text-center text-sm font-medium mb-1">
+          <p className="text-emerald-300 text-center text-sm font-medium mb-1">
             المحلل النحوي الذكي
           </p>
-          <p className="text-emerald-400 text-center text-xs font-medium mb-4 opacity-80">
+          <p className="text-emerald-200 text-center text-xs font-medium mb-1 opacity-80">
             اعداد أ/علاء الوكيل - معلم خبير
           </p>
+          <div className="mt-4 mb-6 px-6 py-4 bg-emerald-800/40 rounded-2xl border border-emerald-400/30 text-center shadow-lg">
+            <p className="text-emerald-100 font-serif leading-relaxed">
+              <span className="text-sm block mb-1 opacity-90">إهداء خاص إلى الموجه الأول</span>
+              <span className="font-bold text-emerald-300 text-xl block mb-1">الأستاذة هالة بلال</span>
+              <span className="text-xs block opacity-80">موجه أول اللغة العربية - إدارة سوهاج التعليمية</span>
+            </p>
+          </div>
 
 
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <label className="text-emerald-500 text-sm font-bold px-1">اكتب كود الدخول</label>
-            <div className={`relative flex items-center bg-white rounded-2xl overflow-hidden transition-all ${error ? 'ring-2 ring-red-500' : 'focus-within:ring-2 focus-within:ring-emerald-500'}`}>
-              <div className="px-4 text-emerald-400">
+            <label className="text-emerald-300 text-sm font-bold px-1">اكتب كود الدخول</label>
+            <div className={`relative flex items-center bg-white rounded-2xl overflow-hidden transition-all ${error ? 'ring-2 ring-red-500' : 'focus-within:ring-2 focus-within:ring-emerald-400'}`}>
+              <div className="px-4 text-emerald-500">
                 <Lock size={20} />
               </div>
               <input
@@ -485,7 +503,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
                 whileTap={{ scale: 0.9 }}
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="px-4 text-emerald-400 hover:text-emerald-600 transition-colors"
+                className="px-4 text-emerald-500 hover:text-emerald-700 transition-colors"
               >
                 <Feather size={20} className={showPassword ? "opacity-100" : "opacity-50"} />
               </motion.button>
@@ -494,7 +512,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
               <motion.p 
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-red-500 text-xs mt-1 px-1 font-bold"
+                className="text-red-400 text-xs mt-1 px-1 font-bold"
               >
                 الكود خطا اتصل بالدعم الفنى
               </motion.p>
@@ -516,10 +534,10 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
             href="https://wa.me/201030302005" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-600 font-medium transition-colors bg-emerald-50 px-4 py-2 rounded-full text-sm border border-emerald-100"
+            className="inline-flex items-center gap-2 text-emerald-100 hover:text-white font-medium transition-colors bg-white/10 px-4 py-2 rounded-full text-sm border border-white/10 backdrop-blur-sm"
           >
             <MessageCircle size={16} />
-            لطلب كود اتصل بالدعم واتس: 01030302005
+            الدعم الفنى
           </a>
         </div>
       </motion.div>
@@ -1136,7 +1154,7 @@ export default function App() {
       </AnimatePresence>
       
       {!showSplash && (
-        <div className="h-screen overflow-hidden bg-[#fdfbf7] font-sans relative flex flex-col md:flex-row" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
+        <div className="h-screen overflow-hidden bg-[#f0f9f6] font-sans relative flex flex-col md:flex-row" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
           {/* Top Banner for Timer */}
           {isTrial && timeLeft !== null && (
             <div className="w-full bg-red-600 text-white py-3 px-4 shadow-md z-30 relative flex justify-center items-center gap-3 md:fixed md:top-0 md:left-0 md:right-0">
@@ -1149,14 +1167,14 @@ export default function App() {
           )}
 
           {/* Sidebar */}
-          <aside className={`w-full md:w-[340px] bg-white border-b md:border-b-0 md:border-l border-stone-200 flex flex-col z-20 shrink-0 shadow-sm relative ${isTrial ? 'md:mt-14' : ''}`}>
-            <div className="p-4 md:p-6 border-b border-stone-100 flex flex-col xl:flex-row items-center xl:items-start justify-between gap-4 text-center xl:text-right relative">
+          <aside className={`w-full md:w-[340px] bg-[#f8fdfc] border-b md:border-b-0 md:border-l border-emerald-100 flex flex-col z-20 shrink-0 shadow-sm relative ${isTrial ? 'md:mt-14' : ''}`}>
+            <div className="p-4 md:p-6 border-b border-emerald-50 flex flex-col xl:flex-row items-center xl:items-start justify-between gap-4 text-center xl:text-right relative">
               <div className="absolute top-4 left-4 z-50">
                 <motion.button 
                   whileHover={{ scale: 1.1 }} 
                   whileTap={{ scale: 0.9 }} 
                   onClick={handleLogout} 
-                  className="bg-white hover:bg-red-50 text-stone-500 hover:text-red-600 p-2 rounded-full transition-colors shadow-sm border border-stone-200 flex items-center justify-center" 
+                  className="bg-white hover:bg-red-50 text-emerald-500 hover:text-red-600 p-2 rounded-full transition-colors shadow-sm border border-emerald-100 flex items-center justify-center" 
                   title="تسجيل الخروج"
                 >
                   <LogOut size={16} />
@@ -1171,16 +1189,16 @@ export default function App() {
                   <span className="text-xl md:text-2xl font-bold text-brand font-ruqaa">ع</span>
                 </motion.div>
                 <div className="flex flex-col items-start">
-                  <h1 className="text-xl md:text-2xl font-bold text-stone-800 font-ruqaa whitespace-nowrap">
+                  <h1 className="text-xl md:text-2xl font-bold text-emerald-800 font-ruqaa whitespace-nowrap">
                     معرب الجمل
                   </h1>
-                  <span className="text-[10px] md:text-xs font-medium text-stone-500 mt-1 whitespace-nowrap">
+                  <span className="text-[10px] md:text-xs font-medium text-emerald-600 mt-1 whitespace-nowrap">
                     علاء الوكيل
                   </span>
                 </div>
               </div>
               
-              <div className="text-[10px] md:text-xs text-stone-400 font-serif leading-relaxed opacity-80 italic whitespace-nowrap hidden md:block">
+              <div className="text-[10px] md:text-xs text-emerald-400 font-serif leading-relaxed opacity-80 italic whitespace-nowrap hidden md:block">
                 أنا البحرُ في أحشائِهِ الدُّرُّ كامنٌ<br/>
                 فهل سألوا الغوّاصَ عن صدفاتي؟
               </div>
@@ -1202,7 +1220,7 @@ export default function App() {
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all whitespace-nowrap shadow-sm ${
                     activeTab === tab.id 
                       ? 'bg-brand text-white shadow-brand/20 border border-transparent' 
-                      : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 hover:border-stone-300'
+                      : 'bg-white text-emerald-700 border border-emerald-100 hover:bg-emerald-50 hover:border-emerald-200'
                   }`}
                 >
                   {tab.icon}
@@ -1211,10 +1229,18 @@ export default function App() {
               ))}
             </nav>
 
-            <div className="p-4 border-t border-stone-100 flex flex-col gap-3">
+            <div className="p-4 border-t border-emerald-50 flex flex-col gap-3">
               <div className="flex gap-2">
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 p-1.5 rounded-lg transition-colors shadow-sm flex justify-center items-center text-sm font-bold" title="تكبير الخط">+</motion.button>
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 p-1.5 rounded-lg transition-colors shadow-sm flex justify-center items-center text-sm font-bold" title="تصغير الخط">-</motion.button>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 rounded-lg transition-colors shadow-sm flex justify-center items-center text-sm font-bold" title="تكبير الخط">+</motion.button>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 rounded-lg transition-colors shadow-sm flex justify-center items-center text-sm font-bold" title="تصغير الخط">-</motion.button>
+              </div>
+              
+              <div className="mt-2 pt-3 border-t border-emerald-100/50">
+                <div className="text-[10px] text-emerald-400 font-serif text-center leading-relaxed">
+                  إهداء خاص إلى الموجه الأول<br/>
+                  <span className="font-bold text-emerald-600">الأستاذة هالة بلال</span><br/>
+                  موجه أول اللغة العربية - إدارة سوهاج التعليمية
+                </div>
               </div>
             </div>
           </aside>
@@ -1222,14 +1248,14 @@ export default function App() {
           {/* Main Content */}
           <main className={`flex-1 overflow-y-auto relative flex flex-col ${isTrial ? 'md:mt-14' : ''}`}>
             {/* Subtle background pattern/gradient for main app */}
-            <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none"></div>
+            <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-emerald-100/30 to-transparent pointer-events-none"></div>
             
             <div className="p-4 md:p-8 flex-1 flex flex-col">
               <motion.div
                 layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="max-w-4xl mx-auto w-full bg-white p-6 md:p-8 rounded-3xl shadow-xl flex flex-col flex-1 border border-amber-100 relative z-10"
+                className="max-w-4xl mx-auto w-full bg-white p-6 md:p-8 rounded-3xl shadow-xl flex flex-col flex-1 border border-emerald-100 relative z-10"
               >
 
             {activeTab === 'parser' && (
