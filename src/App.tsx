@@ -176,6 +176,59 @@ const colorizeDiacritics = (text: string) => {
   });
 };
 
+const grammaticalTerms: Record<string, string> = {
+  'فاعل': 'اسم مرفوع يدل على من قام بالفعل',
+  'مفعول به': 'اسم منصوب وقع عليه فعل الفاعل',
+  'مبتدأ': 'اسم مرفوع تبدأ به الجملة الاسمية',
+  'خبر': 'ما يكمل معنى المبتدأ ويتمم الفائدة',
+  'مضاف إليه': 'اسم مجرور ينسب إلى اسم قبله ليعرفه أو يخصصه',
+  'نعت': 'تابع يذكر لبيان صفة في متبوعه',
+  'صفة': 'تابع يذكر لبيان صفة في متبوعه',
+  'حال': 'اسم منصوب يبين هيئة الفاعل أو المفعول به عند وقوع الفعل',
+  'تمييز': 'اسم نكرة منصوب يزيل الإبهام عن كلمة أو جملة قبله',
+  'ظرف زمان': 'اسم منصوب يدل على زمان وقوع الفعل',
+  'ظرف مكان': 'اسم منصوب يدل على مكان وقوع الفعل',
+  'فعل ماض': 'فعل يدل على حدث وقع في الزمن الماضي',
+  'فعل مضارع': 'فعل يدل على حدث يقع في الزمن الحاضر أو المستقبل',
+  'فعل أمر': 'فعل يطلب به حدوث شيء في المستقبل',
+  'حرف جر': 'حرف يجر الاسم الذي بعده',
+  'اسم مجرور': 'الاسم الذي يقع بعد حرف الجر',
+  'توكيد': 'تابع يذكر لتقوية المعنى وتأكيده',
+  'بدل': 'تابع يمهد له بذكر المتبوع قبله',
+  'اسم إن': 'اسم منصوب يقع بعد إن أو إحدى أخواتها',
+  'خبر إن': 'اسم مرفوع يكمل معنى اسم إن',
+  'اسم كان': 'اسم مرفوع يقع بعد كان أو إحدى أخواتها',
+  'خبر كان': 'اسم منصوب يكمل معنى اسم كان'
+};
+
+const AnalysisText = ({ text }: { text: string }) => {
+  if (!text) return null;
+
+  const terms = Object.keys(grammaticalTerms).sort((a, b) => b.length - a.length);
+  const regex = new RegExp(`(${terms.join('|')})`, 'g');
+
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (grammaticalTerms[part]) {
+          return (
+            <span key={index} className="relative group inline-block cursor-help border-b-2 border-dotted border-brand/50 hover:text-brand transition-colors">
+              {colorizeDiacritics(part)}
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-stone-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center shadow-lg font-sans font-normal leading-relaxed">
+                {grammaticalTerms[part]}
+                <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-stone-800"></span>
+              </span>
+            </span>
+          );
+        }
+        return <span key={index}>{colorizeDiacritics(part)}</span>;
+      })}
+    </>
+  );
+};
+
 function Splash({ onComplete }: { onComplete: () => void }) {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -729,7 +782,7 @@ export default function App() {
     setSentence('');
     setTargetWords('');
     setMode('full');
-    setDisplayMode('table');
+    setDisplayMode('cards');
     setRuleQuery('');
     setRuleResult('');
     setImage(null);
@@ -776,6 +829,7 @@ export default function App() {
     setLoading(true);
     setErrorMessage(null);
     setResult([]); // Clear previous result to show loading indicator initially
+    setDisplayMode('cards');
     
     try {
       const base64Image = image ? image.split(',')[1] : undefined;
@@ -1082,7 +1136,7 @@ export default function App() {
       </AnimatePresence>
       
       {!showSplash && (
-        <div className="min-h-screen bg-[#fdfbf7] font-sans relative flex flex-col md:flex-row" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
+        <div className="h-screen overflow-hidden bg-[#fdfbf7] font-sans relative flex flex-col md:flex-row" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
           {/* Top Banner for Timer */}
           {isTrial && timeLeft !== null && (
             <div className="w-full bg-red-600 text-white py-3 px-4 shadow-md z-30 relative flex justify-center items-center gap-3 md:fixed md:top-0 md:left-0 md:right-0">
@@ -1096,18 +1150,18 @@ export default function App() {
 
           {/* Sidebar */}
           <aside className={`w-full md:w-[340px] bg-white border-b md:border-b-0 md:border-l border-stone-200 flex flex-col z-20 shrink-0 shadow-sm relative ${isTrial ? 'md:mt-14' : ''}`}>
-            <div className="absolute top-4 left-4 z-50">
-              <motion.button 
-                whileHover={{ scale: 1.1 }} 
-                whileTap={{ scale: 0.9 }} 
-                onClick={handleLogout} 
-                className="bg-white hover:bg-red-50 text-stone-500 hover:text-red-600 p-2 rounded-full transition-colors shadow-sm border border-stone-200 flex items-center justify-center" 
-                title="تسجيل الخروج"
-              >
-                <LogOut size={16} />
-              </motion.button>
-            </div>
-            <div className="p-4 md:p-6 border-b border-stone-100 flex flex-col xl:flex-row items-center xl:items-start justify-between gap-4 text-center xl:text-right">
+            <div className="p-4 md:p-6 border-b border-stone-100 flex flex-col xl:flex-row items-center xl:items-start justify-between gap-4 text-center xl:text-right relative">
+              <div className="absolute top-4 left-4 z-50">
+                <motion.button 
+                  whileHover={{ scale: 1.1 }} 
+                  whileTap={{ scale: 0.9 }} 
+                  onClick={handleLogout} 
+                  className="bg-white hover:bg-red-50 text-stone-500 hover:text-red-600 p-2 rounded-full transition-colors shadow-sm border border-stone-200 flex items-center justify-center" 
+                  title="تسجيل الخروج"
+                >
+                  <LogOut size={16} />
+                </motion.button>
+              </div>
               <div className="flex items-center gap-3 md:gap-4">
                 <motion.div 
                   animate={{ rotate: 360 }}
@@ -1486,7 +1540,7 @@ export default function App() {
                             className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm"
                           >
                             {copied ? <Check size={18} className="text-brand" /> : <Copy size={18} />}
-                            {copied ? 'تم النسخ' : 'نسخ'}
+                            {copied ? 'تم النسخ' : 'نسخ الإعراب'}
                           </motion.button>
                           <motion.button 
                             whileHover={{ scale: 1.05 }}
@@ -1597,9 +1651,9 @@ export default function App() {
                                       </div>
                                       
                                       <div className="text-stone-700 text-sm leading-relaxed text-center border-t border-stone-100 pt-4">
-                                        {isChallengeMode ? '...' : colorizeDiacritics(item.analysis.includes(':') && item.analysis.split(':')[0].trim().split(' ').length <= 2 
+                                        {isChallengeMode ? '...' : <AnalysisText text={item.analysis.includes(':') && item.analysis.split(':')[0].trim().split(' ').length <= 2 
                                           ? item.analysis.split(':').slice(1).join(':').trim() 
-                                          : item.analysis)}
+                                          : item.analysis} />}
                                       </div>
                                       
                                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-b border-r border-stone-200 rotate-45"></div>
@@ -1631,7 +1685,7 @@ export default function App() {
                                 </span>
                               </div>
                               <div className="text-stone-700 leading-relaxed font-serif text-right" style={{ fontSize: '1.15em' }}>
-                                {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
+                                {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
                               </div>
                             </motion.div>
                           ))}
@@ -1663,7 +1717,7 @@ export default function App() {
                                     <span className={`px-4 py-1.5 rounded-full border font-bold inline-block ${getCategoryStyles(item.category).badge}`} style={{ fontSize: '0.875em' }}>{item.category}</span>
                                   </td>
                                   <td className="p-5 text-stone-800 leading-relaxed min-w-[300px]" style={{ fontSize: '1.25em' }}>
-                                    {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
+                                    {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
                                   </td>
                                 </motion.tr>
                               ))}
@@ -1701,7 +1755,7 @@ export default function App() {
                                   >
                                     <div className="p-5 pt-0 border-t border-stone-100 bg-stone-50/50">
                                       <div className="text-stone-700 leading-relaxed font-serif text-right mt-4" style={{ fontSize: '1.15em' }}>
-                                        {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
+                                        {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
                                       </div>
                                     </div>
                                   </motion.div>
@@ -1729,7 +1783,7 @@ export default function App() {
                                   {colorizeDiacritics(item.word)}
                                 </h4>
                                 <p className="text-stone-700 leading-relaxed font-serif text-lg">
-                                  {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
+                                  {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
                                 </p>
                               </div>
                             </motion.div>
