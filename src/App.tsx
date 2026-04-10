@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff, AlignLeft, TextCursor, MapPin, Filter, Megaphone, RefreshCw, Trash2, Table, AlignJustify, StickyNote, Key, Lock, LayoutGrid, Feather, ScrollText, Clock, Save, Bookmark, MessageCircle, Info, X, LogOut, Sparkles, Moon } from 'lucide-react';
+import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff, AlignLeft, TextCursor, MapPin, Filter, Megaphone, RefreshCw, Trash2, Table, AlignJustify, StickyNote, Key, Lock, LayoutGrid, Feather, ScrollText, Clock, Save, Bookmark, MessageCircle, Info, X, LogOut, Sparkles, Moon, ChevronDown, List } from 'lucide-react';
 import { analyzeSentence, searchGrammarRule, analyzePoetry, analyzeSpelling, generateDictation } from './services/geminiService';
 import { AnalyzedWord, SpellingResult } from './types';
 import Markdown from 'react-markdown';
@@ -96,53 +96,69 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 }
 
 const getCategoryStyles = (category: string) => {
-  if (!category) return { text: 'text-stone-600', badge: 'bg-stone-50 text-stone-600 border-stone-200' };
+  if (!category) return { text: 'text-stone-600', badge: 'bg-stone-50 text-stone-600 border-stone-200', bg: 'bg-stone-50/30', border: 'border-stone-200' };
   
   if (category.includes('فعل')) {
     return {
       text: 'text-red-600',
       badge: 'bg-red-50 text-red-600 border-red-200',
+      bg: 'bg-red-50/30',
+      border: 'border-red-100 hover:border-red-300'
     };
   }
   if (category.includes('حرف')) {
     return {
       text: 'text-purple-600',
       badge: 'bg-purple-50 text-purple-600 border-purple-200',
+      bg: 'bg-purple-50/30',
+      border: 'border-purple-100 hover:border-purple-300'
     };
   }
   if (category.includes('ضمير')) {
     return {
       text: 'text-amber-600',
       badge: 'bg-amber-50 text-amber-600 border-amber-200',
+      bg: 'bg-amber-50/30',
+      border: 'border-amber-100 hover:border-amber-300'
     };
   }
   if (category.includes('مرفوع') || category.includes('مبتدأ') || category.includes('فاعل')) {
     return {
       text: 'text-emerald-600',
       badge: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+      bg: 'bg-emerald-50/30',
+      border: 'border-emerald-100 hover:border-emerald-300'
     };
   }
   if (category.includes('منصوب') || category.includes('مفعول')) {
     return {
       text: 'text-orange-600',
       badge: 'bg-orange-50 text-orange-600 border-orange-200',
+      bg: 'bg-orange-50/30',
+      border: 'border-orange-100 hover:border-orange-300'
     };
   }
   if (category.includes('مجرور') || category.includes('مضاف')) {
     return {
       text: 'text-cyan-600',
       badge: 'bg-cyan-50 text-cyan-600 border-cyan-200',
+      bg: 'bg-cyan-50/30',
+      border: 'border-cyan-100 hover:border-cyan-300'
     };
   }
   if (category.includes('اسم') || category.includes('خبر') || category.includes('منادى')) {
     return {
       text: 'text-blue-600',
       badge: 'bg-blue-50 text-blue-600 border-blue-200',
+      bg: 'bg-blue-50/30',
+      border: 'border-blue-100 hover:border-blue-300'
     };
   }
   return {
     text: 'text-stone-600',
     badge: 'bg-stone-50 text-stone-600 border-stone-200',
+    bg: 'bg-stone-50/30',
+    border: 'border-stone-100 hover:border-stone-300'
   };
 };
 
@@ -150,17 +166,11 @@ const colorizeDiacritics = (text: string) => {
   if (!text) return text;
   // Diacritics (Short vowels)
   const diacriticsRegex = /([\u064B-\u0652])/g;
-  // Long vowels (Alif, Waw, Ya)
-  const longVowelsRegex = /([\u0627\u0648\u064A])/g;
   
-  const regex = /([\u064B-\u0652\u0627\u0648\u064A])/g;
-  const parts = text.split(regex);
+  const parts = text.split(diacriticsRegex);
   return parts.map((part, index) => {
     if (part.match(diacriticsRegex)) {
       return <span key={index} className="text-red-500 font-bold">{part}</span>;
-    }
-    if (part.match(longVowelsRegex)) {
-      return <span key={index} className="text-blue-500 font-bold">{part}</span>;
     }
     return part;
   });
@@ -531,7 +541,8 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [sentence, setSentence] = useState('');
   const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare' | 'detailed'>('full');
-  const [displayMode, setDisplayMode] = useState<'table' | 'separated' | 'cards' | 'bubbles'>('cards');
+  const [displayMode, setDisplayMode] = useState<'table' | 'separated' | 'cards' | 'bubbles' | 'accordion'>('cards');
+  const [expandedAccordion, setExpandedAccordion] = useState<number | null>(null);
   const [showDisplayModes, setShowDisplayModes] = useState(false);
   const [selectedBubble, setSelectedBubble] = useState<number | null>(null);
 
@@ -764,9 +775,25 @@ export default function App() {
     
     setLoading(true);
     setErrorMessage(null);
+    setResult([]); // Clear previous result to show loading indicator initially
+    
     try {
       const base64Image = image ? image.split(',')[1] : undefined;
-      let analysis = await analyzeSentence(sentence, mode, targetWords, base64Image, showAllFacets);
+      
+      let analysis = await analyzeSentence(
+        sentence, 
+        mode, 
+        targetWords, 
+        base64Image, 
+        showAllFacets,
+        (chunk) => {
+          // Update result incrementally
+          const validChunk = chunk.filter(item => item && typeof item === 'object' && item.word);
+          if (validChunk.length > 0) {
+            setResult(validChunk);
+          }
+        }
+      );
       
       // تأمين البيانات لمنع الشاشة البيضاء
       if (!Array.isArray(analysis)) {
@@ -805,6 +832,34 @@ export default function App() {
     } finally {
       setRuleLoading(false);
     }
+  };
+
+  const renderRuleWithInteractiveExamples = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/<example>(.*?)<\/example>/gs);
+    return parts.map((part, index) => {
+      if (index % 2 === 1) {
+        // This is an example
+        return (
+          <motion.button
+            key={index}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              setSentence(part.trim());
+              setActiveTab('parser');
+              setMode('full');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="inline-block bg-brand/10 text-brand px-3 py-1 rounded-lg font-bold mx-1 my-1 hover:bg-brand hover:text-white transition-colors cursor-pointer border border-brand/20 shadow-sm"
+            title="انقر لإعراب هذا المثال"
+          >
+            {colorizeDiacritics(part)}
+          </motion.button>
+        );
+      }
+      return <span key={index}>{colorizeDiacritics(part)}</span>;
+    });
   };
 
   const handlePoetryAnalyze = async () => {
@@ -866,6 +921,9 @@ export default function App() {
             </motion.button>
             <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setDisplayMode('cards')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'cards' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
               <LayoutGrid size={18} /> بطاقات
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setDisplayMode('accordion')} className={`shrink-0 flex-1 flex justify-center items-center gap-2 px-4 py-2 rounded-lg transition-all ${displayMode === 'accordion' ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700'}`}>
+              <List size={18} /> طي
             </motion.button>
           </div>
         </div>
@@ -968,6 +1026,45 @@ export default function App() {
                 ))}
               </div>
             )}
+
+            {displayMode === 'accordion' && (
+              <div className="flex flex-col gap-3">
+                {spellingResult.corrections.map((correction, idx) => (
+                  <div key={idx} className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+                    <button
+                      onClick={() => setExpandedAccordion(expandedAccordion === idx ? null : idx)}
+                      className="w-full flex items-center justify-between p-4 bg-white hover:bg-stone-50 transition-colors text-right"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-red-500 line-through decoration-red-300 font-bold">{correction.original}</span>
+                        <ArrowRight className="text-stone-400" size={16} />
+                        <span className="text-green-600 font-bold">{correction.corrected}</span>
+                      </div>
+                      <ChevronDown size={20} className={`text-stone-400 transition-transform duration-300 ${expandedAccordion === idx ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {expandedAccordion === idx && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="p-4 pt-0 border-t border-stone-100 bg-stone-50/50">
+                            <div className="prose prose-stone prose-sm max-w-none mt-4">
+                              <Markdown>
+                                {correction.reason}
+                              </Markdown>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </motion.div>
@@ -998,7 +1095,18 @@ export default function App() {
           )}
 
           {/* Sidebar */}
-          <aside className={`w-full md:w-[340px] bg-white border-b md:border-b-0 md:border-l border-stone-200 flex flex-col z-20 shrink-0 shadow-sm ${isTrial ? 'md:mt-14' : ''}`}>
+          <aside className={`w-full md:w-[340px] bg-white border-b md:border-b-0 md:border-l border-stone-200 flex flex-col z-20 shrink-0 shadow-sm relative ${isTrial ? 'md:mt-14' : ''}`}>
+            <div className="absolute top-4 left-4 z-50">
+              <motion.button 
+                whileHover={{ scale: 1.1 }} 
+                whileTap={{ scale: 0.9 }} 
+                onClick={handleLogout} 
+                className="bg-white hover:bg-red-50 text-stone-500 hover:text-red-600 p-2 rounded-full transition-colors shadow-sm border border-stone-200 flex items-center justify-center" 
+                title="تسجيل الخروج"
+              >
+                <LogOut size={16} />
+              </motion.button>
+            </div>
             <div className="p-4 md:p-6 border-b border-stone-100 flex flex-col xl:flex-row items-center xl:items-start justify-between gap-4 text-center xl:text-right">
               <div className="flex items-center gap-3 md:gap-4">
                 <motion.div 
@@ -1018,7 +1126,7 @@ export default function App() {
                 </div>
               </div>
               
-              <div className="text-[10px] md:text-xs text-stone-400 font-serif leading-relaxed opacity-80 italic whitespace-nowrap">
+              <div className="text-[10px] md:text-xs text-stone-400 font-serif leading-relaxed opacity-80 italic whitespace-nowrap hidden md:block">
                 أنا البحرُ في أحشائِهِ الدُّرُّ كامنٌ<br/>
                 فهل سألوا الغوّاصَ عن صدفاتي؟
               </div>
@@ -1051,27 +1159,23 @@ export default function App() {
 
             <div className="p-4 border-t border-stone-100 flex flex-col gap-3">
               <div className="flex gap-2">
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm flex justify-center items-center" title="تكبير الخط">+</motion.button>
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 p-2 rounded-xl transition-colors shadow-sm flex justify-center items-center" title="تصغير الخط">-</motion.button>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 p-1.5 rounded-lg transition-colors shadow-sm flex justify-center items-center text-sm font-bold" title="تكبير الخط">+</motion.button>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 p-1.5 rounded-lg transition-colors shadow-sm flex justify-center items-center text-sm font-bold" title="تصغير الخط">-</motion.button>
               </div>
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} className="w-full bg-red-50 hover:bg-red-100 text-red-600 p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 font-bold" title="تسجيل الخروج">
-                <LogOut size={20} />
-                تسجيل الخروج
-              </motion.button>
             </div>
           </aside>
 
           {/* Main Content */}
-          <main className={`flex-1 overflow-y-auto relative ${isTrial ? 'md:mt-14' : ''}`}>
+          <main className={`flex-1 overflow-y-auto relative flex flex-col ${isTrial ? 'md:mt-14' : ''}`}>
             {/* Subtle background pattern/gradient for main app */}
             <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none"></div>
             
-            <div className="p-4 md:p-8">
+            <div className="p-4 md:p-8 flex-1 flex flex-col">
               <motion.div
                 layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-3xl shadow-xl flex flex-col min-h-[80vh] border border-amber-100 relative z-10"
+                className="max-w-4xl mx-auto w-full bg-white p-6 md:p-8 rounded-3xl shadow-xl flex flex-col flex-1 border border-amber-100 relative z-10"
               >
 
             {activeTab === 'parser' && (
@@ -1146,7 +1250,7 @@ export default function App() {
                           value={sentence}
                           onChange={(e) => setSentence(e.target.value)}
                           placeholder={mode === 'compare' ? "أدخل الجملة الأولى هنا..." : mode === 'extract' ? "أدخل القطعة أو النص هنا..." : mode === 'vocative' ? "أدخل أسلوب النداء هنا..." : mode === 'convert' ? "أدخل الجملة الأصلية هنا..." : mode === 'notes' ? "أدخل النص لاستخراج الملاحظات النحوية..." : "أدخل الجملة..."}
-                          className="w-full min-h-[300px] text-xl md:text-2xl leading-relaxed p-6 pb-16 border-2 border-stone-200 rounded-2xl focus:ring-4 focus:ring-brand/20 focus:border-brand outline-none resize-y shadow-inner bg-stone-50/50 font-serif"
+                          className="w-full min-h-[150px] text-xl md:text-2xl leading-relaxed p-6 pb-16 border-2 border-stone-200 rounded-2xl focus:ring-4 focus:ring-brand/20 focus:border-brand outline-none resize-y shadow-inner bg-stone-50/50 font-serif"
                         />
                         <div className="absolute bottom-4 left-4 flex gap-2">
                           <motion.button
@@ -1181,16 +1285,59 @@ export default function App() {
                             placeholder={mode === 'compare' ? "أدخل الجملة الثانية للمقارنة..." : mode === 'extract' ? "ما الذي تريد استخراجه؟ (مثال: اسم فاعل، صيغة مبالغة، ممنوع من الصرف...)" : mode === 'convert' ? "مثال: حول الجملة الاسمية إلى فعلية، أو حول الحال المفرد إلى جملة..." : mode === 'notes' ? "أي ملاحظات محددة تبحث عنها؟ (اختياري)" : "أدخل الكلمات المراد البحث عنها (مفصولة بفاصلة)..."}
                             className="p-4 text-lg border-2 border-stone-200 rounded-xl focus:ring-4 focus:ring-brand/20 focus:border-brand outline-none bg-stone-50/50"
                           />
-                          {mode === 'convert' && (
-                            <div className="text-sm text-stone-500 bg-stone-100 p-3 rounded-lg border border-stone-200">
-                              <p className="font-semibold mb-1">أمثلة للتحويل:</p>
-                              <ul className="list-disc list-inside space-y-0.5">
-                                <li>حول الجملة الاسمية إلى فعلية</li>
-                                <li>اجعل المبتدأ مثنى</li>
-                                <li>حول الحال المفرد إلى جملة حالية</li>
-                              </ul>
+                          
+                          {mode === 'extract' && (
+                            <div className="bg-stone-100 p-4 rounded-xl border border-stone-200">
+                              <p className="font-bold text-stone-700 mb-3 text-sm flex items-center gap-2">
+                                <Sparkles size={16} className="text-brand" /> خيارات الاستخراج الشائعة:
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {["اسم فاعل", "اسم مفعول", "صيغة مبالغة", "ممنوع من الصرف", "فعل مضارع مجزوم", "نعت", "بدل", "توكيد", "حال", "تمييز"].map(opt => (
+                                  <button
+                                    key={opt}
+                                    onClick={() => {
+                                      const current = targetWords.split(/[،,]/).map(w => w.trim()).filter(Boolean);
+                                      if (current.includes(opt)) {
+                                        setTargetWords(current.filter(w => w !== opt).join('، '));
+                                      } else {
+                                        setTargetWords([...current, opt].join('، '));
+                                      }
+                                    }}
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all border ${targetWords.includes(opt) ? 'bg-brand text-white border-brand' : 'bg-white text-stone-600 border-stone-200 hover:border-brand/50 hover:bg-brand/5'}`}
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           )}
+
+                          {mode === 'convert' && (
+                            <div className="bg-stone-100 p-4 rounded-xl border border-stone-200">
+                              <p className="font-bold text-stone-700 mb-3 text-sm flex items-center gap-2">
+                                <Sparkles size={16} className="text-brand" /> خيارات التحويل الشائعة:
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {["المفرد إلى مثنى", "المفرد إلى جمع", "المذكر إلى مؤنث", "الجملة الاسمية إلى فعلية", "الجملة الفعلية إلى اسمية", "المبني للمعلوم إلى مبني للمجهول", "الحال المفرد إلى جملة"].map(opt => (
+                                  <button
+                                    key={opt}
+                                    onClick={() => {
+                                      const current = targetWords.split(/[،,]/).map(w => w.trim()).filter(Boolean);
+                                      if (current.includes(opt)) {
+                                        setTargetWords(current.filter(w => w !== opt).join('، '));
+                                      } else {
+                                        setTargetWords([...current, opt].join('، '));
+                                      }
+                                    }}
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all border ${targetWords.includes(opt) ? 'bg-brand text-white border-brand' : 'bg-white text-stone-600 border-stone-200 hover:border-brand/50 hover:bg-brand/5'}`}
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           {(mode === 'extract' || mode === 'convert') && (
                             <label className="flex items-center gap-2 text-stone-700 cursor-pointer select-none bg-stone-100 p-3 rounded-xl border border-stone-200 w-fit">
                               <input
@@ -1235,7 +1382,7 @@ export default function App() {
                       </div>
                     )}
                   </motion.div>
-                ) : loading ? (
+                ) : loading && result.length === 0 ? (
                   <motion.div key="loading" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex flex-col items-center justify-center py-24 gap-8">
                     <div className="relative flex items-center justify-center w-32 h-32">
                       {/* Rotating dashed border */}
@@ -1296,7 +1443,8 @@ export default function App() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => setResult([])} 
-                            className="flex items-center gap-2 bg-white text-stone-700 px-6 py-3 rounded-xl font-bold shadow-sm border border-stone-200 hover:bg-stone-100 transition-all hover:-translate-x-1"
+                            disabled={loading}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold shadow-sm border transition-all ${loading ? 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100 hover:-translate-x-1'}`}
                           >
                             <ArrowRight size={20} className="rotate-180" /> رجوع
                           </motion.button>
@@ -1304,7 +1452,8 @@ export default function App() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={handleClear} 
-                            className="flex items-center gap-2 bg-red-50 text-red-600 px-6 py-3 rounded-xl font-bold shadow-sm border border-red-200 hover:bg-red-100 transition-all"
+                            disabled={loading}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold shadow-sm border transition-all ${loading ? 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}
                           >
                             <Trash2 size={20} /> مسح الكل
                           </motion.button>
@@ -1355,6 +1504,7 @@ export default function App() {
                         <div className="bg-stone-100 p-1.5 rounded-2xl flex items-center gap-1 shadow-inner overflow-x-auto max-w-full">
                           {[
                             { id: 'cards', icon: <LayoutGrid size={18} />, label: 'بطاقات' },
+                            { id: 'accordion', icon: <List size={18} />, label: 'طي' },
                             { id: 'bubbles', icon: <MessageCircle size={18} />, label: 'فقاعات' },
                             { id: 'table', icon: <Table size={18} />, label: 'جدول' },
                             { id: 'separated', icon: <AlignJustify size={18} />, label: 'فواصل' }
@@ -1469,7 +1619,8 @@ export default function App() {
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               transition={{ delay: index * 0.05 }}
                               key={index}
-                              className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 hover:shadow-lg transition-all duration-300 flex flex-col gap-4 group"
+                              className={`p-6 rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col gap-4 group border ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}
+                              dir="rtl"
                             >
                               <div className="flex justify-between items-center border-b border-stone-50 pb-4">
                                 <span className={`font-bold font-serif group-hover:scale-105 transition-transform ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.75em' }}>
@@ -1479,7 +1630,7 @@ export default function App() {
                                   {item.category}
                                 </span>
                               </div>
-                              <div className="text-stone-700 leading-relaxed font-serif" style={{ fontSize: '1.15em' }}>
+                              <div className="text-stone-700 leading-relaxed font-serif text-right" style={{ fontSize: '1.15em' }}>
                                 {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
                               </div>
                             </motion.div>
@@ -1503,7 +1654,7 @@ export default function App() {
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: index * 0.1 }}
                                   key={index} 
-                                  className={`border-b border-stone-100 last:border-0 ${index % 2 === 0 ? 'bg-white' : 'bg-stone-50/50'}`}
+                                  className={`border-b last:border-0 ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}
                                 >
                                   <td className={`p-5 font-bold font-serif whitespace-nowrap ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.5em' }}>
                                     {colorizeDiacritics(item.word)}
@@ -1518,6 +1669,46 @@ export default function App() {
                               ))}
                             </tbody>
                           </table>
+                        </div>
+                      ) : displayMode === 'accordion' ? (
+                        <div className="flex flex-col gap-3 p-4">
+                          {result.map((item, index) => (
+                            <div key={index} className={`rounded-2xl border shadow-sm overflow-hidden ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}>
+                              <button
+                                onClick={() => setExpandedAccordion(expandedAccordion === index ? null : index)}
+                                className="w-full flex items-center justify-between p-5 hover:bg-white/50 transition-colors text-right"
+                                dir="rtl"
+                              >
+                                <div className="flex items-center gap-4">
+                                  <span className={`font-bold font-serif ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.5em' }}>
+                                    {colorizeDiacritics(item.word)}
+                                  </span>
+                                  <span className={`px-3 py-1 rounded-full border font-bold text-xs ${getCategoryStyles(item.category).badge}`}>
+                                    {item.category}
+                                  </span>
+                                </div>
+                                <ChevronDown size={20} className={`text-stone-400 transition-transform duration-300 ${expandedAccordion === index ? 'rotate-180' : ''}`} />
+                              </button>
+                              <AnimatePresence>
+                                {expandedAccordion === index && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="overflow-hidden"
+                                    dir="rtl"
+                                  >
+                                    <div className="p-5 pt-0 border-t border-stone-100 bg-stone-50/50">
+                                      <div className="text-stone-700 leading-relaxed font-serif text-right mt-4" style={{ fontSize: '1.15em' }}>
+                                        {isChallengeMode ? '...' : colorizeDiacritics(item.analysis)}
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          ))}
                         </div>
                       ) : (
                         <div className="space-y-4 p-4">
@@ -1547,6 +1738,15 @@ export default function App() {
                       )}
                         </motion.div>
                       </AnimatePresence>
+                      
+                      {loading && (
+                        <div className="flex justify-center items-center py-8">
+                          <div className="flex items-center gap-3 bg-white px-6 py-3 rounded-full shadow-sm border border-stone-200">
+                            <Loader2 className="animate-spin text-brand" size={20} />
+                            <span className="font-bold text-stone-600 text-sm">{loadingMessage}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -1561,6 +1761,11 @@ export default function App() {
                     type="text"
                     value={ruleQuery}
                     onChange={(e) => setRuleQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && ruleQuery.trim()) {
+                        handleSearchRule();
+                      }
+                    }}
                     placeholder="أدخل اسم القاعدة (مثال: كان وأخواتها)..."
                     className="flex-grow min-w-0 p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-brand outline-none font-serif text-lg"
                   />
@@ -1568,23 +1773,43 @@ export default function App() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleSearchRule}
-                    disabled={ruleLoading}
-                    className={`shrink-0 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md ${ruleLoading ? 'bg-stone-400 cursor-not-allowed' : 'bg-brand hover:bg-brand-light hover:shadow-brand/30'}`}
+                    disabled={ruleLoading || !ruleQuery.trim()}
+                    className={`shrink-0 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md ${ruleLoading || !ruleQuery.trim() ? 'bg-stone-400 cursor-not-allowed' : 'bg-brand hover:bg-brand-light hover:shadow-brand/30'}`}
                   >
                     {ruleLoading ? (
                       <Loader2 className="animate-spin" />
                     ) : (
                       <>
-                        <BookOpenText />
+                        <Search size={20} />
                         بحث
                       </>
                     )}
                   </motion.button>
                 </div>
+
+                <div className="bg-stone-100 p-4 rounded-xl border border-stone-200">
+                  <p className="font-bold text-stone-700 mb-3 text-sm flex items-center gap-2">
+                    <Sparkles size={16} className="text-brand" /> كلمات مفتاحية سريعة:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {["المبتدأ والخبر", "كان وأخواتها", "إن وأخواتها", "الفاعل", "المفعول به", "المضاف إليه", "النعت", "الحال", "التمييز", "المستثنى", "المنادى", "الممنوع من الصرف", "الأفعال الخمسة", "الأسماء الخمسة", "الفعل المضارع"].map(opt => (
+                      <button
+                        key={opt}
+                        onClick={() => {
+                          setRuleQuery(opt);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all border ${ruleQuery === opt ? 'bg-brand text-white border-brand' : 'bg-white text-stone-600 border-stone-200 hover:border-brand/50 hover:bg-brand/5'}`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <AnimatePresence mode="wait">
                 {ruleResult && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-6 bg-white rounded-xl border border-stone-200 text-stone-800 leading-relaxed whitespace-pre-line relative font-serif text-lg">
-                    {colorizeDiacritics(ruleResult)}
+                    {renderRuleWithInteractiveExamples(ruleResult)}
                   </motion.div>
                 )}
                 </AnimatePresence>
@@ -1597,22 +1822,28 @@ export default function App() {
                   <textarea
                     value={poetryQuery}
                     onChange={(e) => setPoetryQuery(e.target.value)}
-                    placeholder="أدخل البيت الشعري هنا (مثال: الخيل والليل والبيداء تعرفني...)"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && poetryQuery.trim()) {
+                        e.preventDefault();
+                        handlePoetryAnalyze();
+                      }
+                    }}
+                    placeholder="أدخل بيتاً شعرياً لتحليله، أو كلمة للبحث عن بيت يحتوي عليها..."
                     className="flex-grow min-w-0 p-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-brand outline-none resize-y min-h-[120px] font-serif text-lg"
                   />
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handlePoetryAnalyze}
-                    disabled={poetryLoading}
-                    className={`shrink-0 text-white px-6 py-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-all shadow-md min-w-[120px] ${poetryLoading ? 'bg-stone-400 cursor-not-allowed' : 'bg-brand hover:bg-brand-light hover:shadow-brand/30'}`}
+                    disabled={poetryLoading || !poetryQuery.trim()}
+                    className={`shrink-0 text-white px-6 py-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-all shadow-md min-w-[120px] ${poetryLoading || !poetryQuery.trim() ? 'bg-stone-400 cursor-not-allowed' : 'bg-brand hover:bg-brand-light hover:shadow-brand/30'}`}
                   >
                     {poetryLoading ? (
                       <Loader2 className="animate-spin" />
                     ) : (
                       <>
-                        <BookOpenText />
-                        تحليل
+                        <Search size={24} />
+                        بحث / تحليل
                       </>
                     )}
                   </motion.button>

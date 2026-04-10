@@ -117,7 +117,7 @@ app.post("/api/analyze", async (req, res) => {
 
   try {
     const ai = getAI();
-    const response = await executeWithRetry(() => ai.models.generateContent({
+    const responseStream = await executeWithRetry(() => ai.models.generateContentStream({
       model: "gemini-3.1-flash-lite-preview",
       contents: { parts: contents },
       config: {
@@ -136,16 +136,28 @@ app.post("/api/analyze", async (req, res) => {
         }
       }
     }));
-    res.json(JSON.parse(response.text || '[]'));
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    for await (const chunk of responseStream) {
+      res.write(chunk.text);
+    }
+    res.end();
   } catch (error: any) {
     console.error("Gemini Error:", error);
-    res.status(500).json({ error: error.message || "حدث خطأ غير متوقع في السيرفر" });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || "حدث خطأ غير متوقع في السيرفر" });
+    } else {
+      res.end();
+    }
   }
 });
 
 app.post("/api/rule", async (req, res) => {
   const { ruleName } = req.body;
-  const prompt = `اشرح قاعدة "${ruleName}" في النحو العربي بإيجاز. صغ الإجابة بشكل منظم وواضح.`;
+  const prompt = `اشرح قاعدة "${ruleName}" في النحو العربي بإيجاز. صغ الإجابة بشكل منظم وواضح.
+ملاحظة هامة جداً: أي أمثلة تذكرها في الشرح (سواء كانت آيات قرآنية، أبيات شعرية، أو جمل عادية)، يجب أن تضعها داخل وسوم <example> هكذا: <example>المثال هنا</example>.`;
   
   try {
     const ai = getAI();
@@ -161,7 +173,13 @@ app.post("/api/rule", async (req, res) => {
 
 app.post("/api/poetry", async (req, res) => {
   const { verse } = req.body;
-  const prompt = `قم بتحليل وشرح البيت الشعري التالي تحليلاً أدبياً ولغوياً: "${verse}". صغ الإجابة بشكل منظم وواضح.`;
+  const prompt = `
+المستخدم أدخل النص التالي: "${verse}"
+إذا كان النص عبارة عن كلمة واحدة أو عبارة قصيرة (يبدو ككلمة بحث)، قم بالبحث عن بيت شعر عربي فصيح يحتوي على هذه الكلمة أو يحمل معناها.
+إذا وجدت بيتاً، اكتب البيت الشعري أولاً، ثم اذكر اسم الشاعر (إن عُرف)، ثم اشرح البيت باختصار.
+إذا لم تجد أي بيت شعر يحتوي على الكلمة أو معناها، يجب أن ترد حصراً بالعبارة التالية: "لا يوجد بيت شعر به هذه الكلمة".
+أما إذا كان النص المدخل عبارة عن بيت شعري كامل، فقم بتحليله وشرحه تحليلاً أدبياً ولغوياً بشكل منظم وواضح.
+`;
   
   try {
     const ai = getAI();

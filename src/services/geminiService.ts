@@ -3,11 +3,20 @@ import { AnalyzedWord, SpellingResult } from "../types";
 // نظام تخزين مؤقت لحفظ النتائج السابقة وتقليل الضغط على السيرفر
 const apiCache = new Map<string, any>();
 
-export async function analyzeSentence(sentence: string, mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare' | 'detailed', targetWords?: string, image?: string, showAllFacets?: boolean, retryCount = 0): Promise<AnalyzedWord[]> {
+export async function analyzeSentence(
+  sentence: string, 
+  mode: 'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare' | 'detailed', 
+  targetWords?: string, 
+  image?: string, 
+  showAllFacets?: boolean, 
+  onChunk?: (words: AnalyzedWord[]) => void
+): Promise<AnalyzedWord[]> {
   const cacheKey = `analyze_${mode}_${sentence.trim()}_${targetWords?.trim() || ''}_${image ? 'with_image' : 'no_image'}_${showAllFacets ? 'all_facets' : 'normal'}`;
   
   if (apiCache.has(cacheKey)) {
-    return apiCache.get(cacheKey);
+    const cached = apiCache.get(cacheKey);
+    if (onChunk) onChunk(cached);
+    return cached;
   }
 
   try {
@@ -17,8 +26,8 @@ export async function analyzeSentence(sentence: string, mode: 'full' | 'partial'
       body: JSON.stringify({ sentence, mode, targetWords, image, showAllFacets })
     });
 
-    const text = await response.text();
     if (!response.ok) {
+      const text = await response.text();
       let errorMessage = 'Failed to analyze sentence';
       try {
         const errorData = JSON.parse(text);
@@ -29,19 +38,53 @@ export async function analyzeSentence(sentence: string, mode: 'full' | 'partial'
       throw new Error(errorMessage);
     }
 
-    try {
-      const finalResult = JSON.parse(text) as AnalyzedWord[];
-      apiCache.set(cacheKey, finalResult);
-      return finalResult;
-    } catch (e) {
-      console.error("Failed to parse JSON response:", text);
-      throw new Error(`استجابة غير صالحة من السيرفر: ${text.substring(0, 100)}`);
+    if (!response.body) throw new Error("No response body");
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let accumulatedText = "";
+    let finalResult: AnalyzedWord[] = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      accumulatedText += decoder.decode(value, { stream: true });
+      
+      // Extract complete JSON objects using regex
+      const matches = accumulatedText.match(/\{[^{}]+\}/g);
+      if (matches) {
+        const parsedWords: AnalyzedWord[] = [];
+        for (const match of matches) {
+          try {
+            parsedWords.push(JSON.parse(match));
+          } catch (e) {
+            // Ignore incomplete JSON objects
+          }
+        }
+        if (parsedWords.length > 0) {
+          finalResult = parsedWords;
+          if (onChunk) onChunk(finalResult);
+        }
+      }
     }
+
+    // Try to parse the whole text just in case the regex missed something at the end
+    try {
+      const fullParsed = JSON.parse(accumulatedText);
+      if (Array.isArray(fullParsed)) {
+        finalResult = fullParsed;
+      }
+    } catch (e) {
+      // It's okay if it fails, we rely on the incremental parsing
+    }
+
+    apiCache.set(cacheKey, finalResult);
+    return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);
     const errorMessage = error.message || String(error);
     
-    // إظهار رسالة الخطأ الحقيقية إذا كانت متوفرة
     if (errorMessage && errorMessage !== "Failed to fetch") {
       throw new Error(`خطأ في السيرفر: ${errorMessage}`);
     }
