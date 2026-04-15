@@ -579,7 +579,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             type="button"
-            onClick={() => onLogin(true)}
+            onClick={() => onLogin(false)}
             className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-bold py-3 rounded-2xl transition-all text-lg flex items-center justify-center gap-2"
           >
             دخول <Feather size={20} className="rotate-45" />
