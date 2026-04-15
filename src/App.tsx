@@ -285,6 +285,32 @@ const AnalysisText = ({ text }: { text: string }) => {
   );
 };
 
+const ExpandableAnalysisText = ({ text, maxLength = 150 }: { text: string, maxLength?: number }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  if (!text) return null;
+  
+  const isLong = text.length > maxLength;
+  const displayText = isLong && !isExpanded ? text.substring(0, maxLength) + '...' : text;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div>
+        <AnalysisText text={displayText} />
+      </div>
+      {isLong && (
+        <button 
+          onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+          className="text-sm font-bold text-brand hover:text-brand/80 self-start mt-1 flex items-center gap-1"
+        >
+          {isExpanded ? 'عرض أقل' : 'قراءة المزيد'}
+          <ChevronDown size={14} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+        </button>
+      )}
+    </div>
+  );
+};
+
 function Splash({ onComplete }: { onComplete: () => void }) {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -2210,6 +2236,7 @@ export default function App() {
                               category={item.category}
                               categoryStyles={getCategoryStyles(item.category)}
                               onRemove={() => handleRemoveWord(item)}
+                              isExpandable={true}
                             />
                           ))}
                         </div>
@@ -2297,7 +2324,7 @@ export default function App() {
                                   >
                                     <div className="p-5 pt-0 border-t border-stone-100 bg-stone-50/50">
                                       <div className="text-stone-900 leading-[1.8] font-serif text-right mt-4" style={{ fontSize: '1.2em' }}>
-                                        {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
+                                        {isChallengeMode ? '...' : <ExpandableAnalysisText text={item.analysis} />}
                                       </div>
                                     </div>
                                   </motion.div>
@@ -2351,97 +2378,47 @@ export default function App() {
                       ) : displayMode === 'carousel' ? (
                         <div className="flex overflow-x-auto gap-6 p-4 pb-8 hide-scrollbar snap-x snap-mandatory" dir="rtl">
                           {paginatedResult.map((item, index) => (
-                            <motion.div
-                              layout
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: index * 0.05 }}
-                              key={index}
-                              className={`shrink-0 w-80 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col gap-4 group border relative snap-center ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}
-                            >
-                              <button
-                                onClick={() => handleRemoveWord(item)}
-                                className="absolute top-4 left-4 p-1.5 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 z-10"
-                                title="حذف هذه الكلمة"
-                              >
-                                <X size={16} />
-                              </button>
-                              <div className="flex justify-between items-center border-b border-stone-100 pb-4">
-                                <h3 className={`font-bold font-serif ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.75em' }}>
-                                  {colorizeDiacritics(item.word)}
-                                </h3>
-                                <span className={`px-3 py-1 rounded-full border font-bold text-xs ${getCategoryStyles(item.category).badge}`}>
-                                  {item.category}
-                                </span>
-                              </div>
-                              <div className="text-stone-900 leading-[1.8] font-serif text-right overflow-y-auto max-h-48 hide-scrollbar" style={{ fontSize: '1.2em' }}>
-                                {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
-                              </div>
-                            </motion.div>
+                            <div key={index} className="shrink-0 w-80 snap-center">
+                              <AnalysisCard
+                                index={index}
+                                word={colorizeDiacritics(item.word)}
+                                analysis={isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
+                                category={item.category}
+                                categoryStyles={getCategoryStyles(item.category)}
+                                onRemove={() => handleRemoveWord(item)}
+                                isExpandable={true}
+                              />
+                            </div>
                           ))}
                         </div>
                       ) : displayMode === 'grid' ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
                           {paginatedResult.map((item, index) => (
-                            <motion.div
-                              layout
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: index * 0.05 }}
+                            <AnalysisCard
                               key={index}
-                              className={`p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group border relative ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}
-                            >
-                              <button
-                                onClick={() => handleRemoveWord(item)}
-                                className="absolute top-3 left-3 p-1.5 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 z-10"
-                                title="حذف هذه الكلمة"
-                              >
-                                <X size={16} />
-                              </button>
-                              <div className="flex flex-col gap-2 border-b border-stone-100 pb-3">
-                                <h3 className={`font-bold font-serif ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.5em' }}>
-                                  {colorizeDiacritics(item.word)}
-                                </h3>
-                                <span className={`self-start px-2.5 py-1 rounded-full border font-bold text-[10px] ${getCategoryStyles(item.category).badge}`}>
-                                  {item.category}
-                                </span>
-                              </div>
-                              <div className="text-stone-900 leading-[1.8] font-serif text-right" style={{ fontSize: '1.1em' }}>
-                                {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
-                              </div>
-                            </motion.div>
+                              index={index}
+                              word={colorizeDiacritics(item.word)}
+                              analysis={isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
+                              category={item.category}
+                              categoryStyles={getCategoryStyles(item.category)}
+                              onRemove={() => handleRemoveWord(item)}
+                              isExpandable={true}
+                            />
                           ))}
                         </div>
                       ) : (
-                        <div className="space-y-4 p-4">
+                        <div className="space-y-6 p-4">
                           {paginatedResult.map((item, index) => (
-                            <motion.div 
-                              layout
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.05 }}
+                            <AnalysisCard
                               key={index}
-                              className={`bg-white p-6 rounded-3xl border border-stone-100 shadow-sm flex items-start gap-4 hover:border-brand/20 transition-colors relative group`}
-                            >
-                              <button
-                                onClick={() => handleRemoveWord(item)}
-                                className="absolute top-4 left-4 p-1.5 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                                title="حذف هذه الكلمة"
-                              >
-                                <X size={16} />
-                              </button>
-                              <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center font-bold font-serif text-xl ${getCategoryStyles(item.category).badge}`}>
-                                {colorizeDiacritics(item.word.charAt(0))}
-                              </div>
-                              <div className="flex-grow">
-                                <h4 className={`font-bold font-serif text-xl mb-1 ${getCategoryStyles(item.category).text}`}>
-                                  {colorizeDiacritics(item.word)}
-                                </h4>
-                                <p className="text-stone-900 leading-[1.8] font-serif text-lg">
-                                  {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
-                                </p>
-                              </div>
-                            </motion.div>
+                              index={index}
+                              word={colorizeDiacritics(item.word)}
+                              analysis={isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
+                              category={item.category}
+                              categoryStyles={getCategoryStyles(item.category)}
+                              onRemove={() => handleRemoveWord(item)}
+                              isExpandable={true}
+                            />
                           ))}
                         </div>
                       )}
