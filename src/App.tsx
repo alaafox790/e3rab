@@ -3,15 +3,127 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff, AlignLeft, TextCursor, MapPin, Filter, Megaphone, RefreshCw, Trash2, Table, AlignJustify, StickyNote, Key, Lock, LayoutGrid, Feather, ScrollText, Clock, Save, Bookmark, MessageCircle, Info, X, LogOut, Sparkles, Moon, ChevronDown, List } from 'lucide-react';
-import { analyzeSentence, searchGrammarRule, analyzePoetry, analyzeSpelling, generateDictation } from './services/geminiService';
+import { Search, Loader2, BookOpenText, Camera, Share2, Copy, Check, ArrowRight, Mic, MicOff, AlignLeft, TextCursor, MapPin, Filter, Megaphone, RefreshCw, Trash2, Table, AlignJustify, StickyNote, Key, Lock, LayoutGrid, Feather, ScrollText, Clock, Save, Bookmark, MessageCircle, Info, X, LogOut, Sparkles, Moon, ChevronDown, List, Network, MousePointerClick, ChevronRight, ChevronLeft, Wand2, ArrowUpDown, ArrowUp, ArrowDown, Grid, GalleryHorizontal } from 'lucide-react';
+import { analyzeSentence, searchGrammarRule, analyzePoetry, analyzeSpelling, generateDictation, autoDiacritize, generateQuizQuestion, evaluateQuizAnswer } from './services/geminiService';
 import { AnalyzedWord, SpellingResult } from './types';
 import Markdown from 'react-markdown';
 import { db, auth, googleProvider } from './firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { signInWithPopup, onAuthStateChanged, User } from 'firebase/auth';
+import { AnalysisCard } from './components/AnalysisCard';
+import * as d3 from 'd3';
+
+const MindmapView = ({ sentence, result, getCategoryStyles, colorizeDiacritics, onRemove }: any) => {
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [links, setLinks] = useState<any[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!result || result.length === 0) return;
+
+    const width = 800;
+    const height = 600;
+
+    const initialNodes = [
+      { id: 'root', label: sentence, isRoot: true, radius: 80, x: width/2, y: height/2 },
+      ...result.map((item: any, i: number) => ({
+        id: `node-${i}`,
+        item,
+        isRoot: false,
+        radius: 60,
+        x: width/2 + Math.random() * 100 - 50,
+        y: height/2 + Math.random() * 100 - 50
+      }))
+    ];
+
+    const initialLinks = result.map((_: any, i: number) => ({
+      source: 'root',
+      target: `node-${i}`
+    }));
+
+    const simulation = d3.forceSimulation(initialNodes)
+      .force("link", d3.forceLink(initialLinks).id((d: any) => d.id).distance(180))
+      .force("charge", d3.forceManyBody().strength(-800))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("collide", d3.forceCollide().radius((d: any) => d.radius + 20));
+
+    simulation.on("tick", () => {
+      setNodes([...initialNodes]);
+      setLinks([...initialLinks]);
+    });
+
+    return () => {
+      simulation.stop();
+    };
+  }, [sentence, result]);
+
+  return (
+    <div className="relative w-full max-w-5xl mx-auto h-[600px] bg-stone-50 rounded-3xl border border-stone-200 shadow-inner overflow-hidden" ref={containerRef} dir="rtl">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet">
+        {links.map((link, i) => (
+          <line
+            key={i}
+            x1={link.source.x}
+            y1={link.source.y}
+            x2={link.target.x}
+            y2={link.target.y}
+            stroke="#cbd5e1"
+            strokeWidth="2"
+          />
+        ))}
+      </svg>
+
+      {nodes.map((node) => {
+        if (node.isRoot) {
+          return (
+            <div
+              key={node.id}
+              className="absolute z-20 bg-brand text-white px-6 py-4 rounded-2xl font-bold font-serif text-xl shadow-lg text-center max-w-[250px]"
+              style={{
+                left: `${(node.x / 800) * 100}%`,
+                top: `${(node.y / 600) * 100}%`,
+                transform: 'translate(-50%, -50%)'
+              }}
+            >
+              {node.label}
+            </div>
+          );
+        }
+
+        const { item } = node;
+        return (
+          <div
+            key={node.id}
+            className={`absolute z-10 w-40 p-3 rounded-xl shadow-md border flex flex-col items-center gap-2 hover:scale-105 transition-transform group ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}
+            style={{
+              left: `${(node.x / 800) * 100}%`,
+              top: `${(node.y / 600) * 100}%`,
+              transform: 'translate(-50%, -50%)'
+            }}
+          >
+            {onRemove && (
+              <button
+                onClick={() => onRemove(item)}
+                className="absolute -top-2 -left-2 p-1 bg-white rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors shadow-sm opacity-0 group-hover:opacity-100"
+                title="حذف هذه الكلمة"
+              >
+                <X size={14} />
+              </button>
+            )}
+            <span className={`font-bold font-serif text-lg ${getCategoryStyles(item.category).text}`}>
+              {colorizeDiacritics(item.word)}
+            </span>
+            <span className={`px-2 py-0.5 rounded-full border font-bold text-[10px] ${getCategoryStyles(item.category).badge}`}>
+              {item.category}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 enum OperationType {
   CREATE = 'create',
@@ -75,8 +187,8 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-emerald-50 p-4" dir="rtl">
-          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg text-center border border-emerald-100">
+        <div className="min-h-screen flex items-center justify-center bg-stone-100 p-4" dir="rtl">
+          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg text-center">
             <h2 className="text-2xl font-bold text-red-600 mb-4">عذراً، حدث خطأ غير متوقع!</h2>
             <p className="text-stone-600 mb-6">واجه التطبيق مشكلة أثناء عرض البيانات. يرجى تحديث الصفحة والمحاولة مرة أخرى.</p>
             <motion.button 
@@ -94,73 +206,6 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
     return this.props.children;
   }
 }
-
-const getCategoryStyles = (category: string) => {
-  if (!category) return { text: 'text-stone-600', badge: 'bg-stone-50 text-stone-600 border-stone-200', bg: 'bg-stone-50/30', border: 'border-stone-200' };
-  
-  if (category.includes('فعل')) {
-    return {
-      text: 'text-red-600',
-      badge: 'bg-red-50 text-red-600 border-red-200',
-      bg: 'bg-red-50/30',
-      border: 'border-red-100 hover:border-red-300'
-    };
-  }
-  if (category.includes('حرف')) {
-    return {
-      text: 'text-purple-600',
-      badge: 'bg-purple-50 text-purple-600 border-purple-200',
-      bg: 'bg-purple-50/30',
-      border: 'border-purple-100 hover:border-purple-300'
-    };
-  }
-  if (category.includes('ضمير')) {
-    return {
-      text: 'text-amber-600',
-      badge: 'bg-amber-50 text-amber-600 border-amber-200',
-      bg: 'bg-amber-50/30',
-      border: 'border-amber-100 hover:border-amber-300'
-    };
-  }
-  if (category.includes('مرفوع') || category.includes('مبتدأ') || category.includes('فاعل')) {
-    return {
-      text: 'text-emerald-600',
-      badge: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-      bg: 'bg-emerald-50/30',
-      border: 'border-emerald-100 hover:border-emerald-300'
-    };
-  }
-  if (category.includes('منصوب') || category.includes('مفعول')) {
-    return {
-      text: 'text-orange-600',
-      badge: 'bg-orange-50 text-orange-600 border-orange-200',
-      bg: 'bg-orange-50/30',
-      border: 'border-orange-100 hover:border-orange-300'
-    };
-  }
-  if (category.includes('مجرور') || category.includes('مضاف')) {
-    return {
-      text: 'text-cyan-600',
-      badge: 'bg-cyan-50 text-cyan-600 border-cyan-200',
-      bg: 'bg-cyan-50/30',
-      border: 'border-cyan-100 hover:border-cyan-300'
-    };
-  }
-  if (category.includes('اسم') || category.includes('خبر') || category.includes('منادى')) {
-    return {
-      text: 'text-blue-600',
-      badge: 'bg-blue-50 text-blue-600 border-blue-200',
-      bg: 'bg-blue-50/30',
-      border: 'border-blue-100 hover:border-blue-300'
-    };
-  }
-  return {
-    text: 'text-stone-600',
-    badge: 'bg-stone-50 text-stone-600 border-stone-200',
-    bg: 'bg-stone-50/30',
-    border: 'border-stone-100 hover:border-stone-300'
-  };
-};
 
 const colorizeDiacritics = (text: string) => {
   if (!text) return text;
@@ -198,7 +243,22 @@ const grammaticalTerms: Record<string, string> = {
   'اسم إن': 'اسم منصوب يقع بعد إن أو إحدى أخواتها',
   'خبر إن': 'اسم مرفوع يكمل معنى اسم إن',
   'اسم كان': 'اسم مرفوع يقع بعد كان أو إحدى أخواتها',
-  'خبر كان': 'اسم منصوب يكمل معنى اسم كان'
+  'خبر كان': 'اسم منصوب يكمل معنى اسم كان',
+  'مرفوع': 'حالة إعرابية علامتها الأصلية الضمة',
+  'منصوب': 'حالة إعرابية علامتها الأصلية الفتحة',
+  'مجرور': 'حالة إعرابية علامتها الأصلية الكسرة',
+  'مجزوم': 'حالة إعرابية خاصة بالفعل المضارع علامتها الأصلية السكون',
+  'مبني': 'ما يلزم آخره حالة واحدة لا تتغير بتغير موقعه في الجملة',
+  'معرب': 'ما يتغير آخره بتغير موقعه في الجملة',
+  'مفعول مطلق': 'مصدر منصوب يذكر بعد فعل من لفظه لتأكيده أو بيان نوعه أو عدده',
+  'مفعول لأجله': 'اسم منصوب يذكر لبيان سبب وقوع الفعل',
+  'مفعول معه': 'اسم منصوب يقع بعد واو بمعنى (مع) لبيان ما فُعل الفعل بمصاحبته',
+  'مستثنى': 'اسم يذكر بعد أداة استثناء مخالفا لما قبلها في الحكم',
+  'منادى': 'اسم يطلب إقباله بأداة نداء',
+  'ضمير متصل': 'ضمير يتصل بكلمة قبله ولا يستقل بنفسه',
+  'ضمير منفصل': 'ضمير يستقل بنفسه ولا يتصل بكلمة قبله',
+  'ضمير مستتر': 'ضمير لا يظهر في اللفظ ويقدر في الذهن',
+  'ممنوع من الصرف': 'اسم معرب لا ينون ويجر بالفتحة نيابة عن الكسرة'
 };
 
 const AnalysisText = ({ text }: { text: string }) => {
@@ -214,12 +274,8 @@ const AnalysisText = ({ text }: { text: string }) => {
       {parts.map((part, index) => {
         if (grammaticalTerms[part]) {
           return (
-            <span key={index} className="relative group inline-block cursor-help border-b-2 border-dotted border-emerald-400/50 hover:text-emerald-600 transition-colors">
+            <span key={index} className="font-bold text-brand">
               {colorizeDiacritics(part)}
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-emerald-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center shadow-lg font-sans font-normal leading-relaxed">
-                {grammaticalTerms[part]}
-                <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-emerald-800"></span>
-              </span>
             </span>
           );
         }
@@ -397,16 +453,16 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
 
   if (showAdmin) {
     return (
-      <div className="min-h-screen bg-[#064e3b] flex items-center justify-center p-4 font-sans" dir="rtl">
+      <div className="min-h-screen bg-[#0d1b18] flex items-center justify-center p-4 font-sans" dir="rtl">
         <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-[#065f46] p-8 rounded-3xl shadow-xl w-full max-w-md border border-emerald-400/30 text-center"
+          className="bg-[#152a25] p-8 rounded-3xl shadow-xl w-full max-w-md border border-emerald-800/30 text-center"
         >
           <h2 className="text-2xl font-bold text-white mb-6">لوحة الإدارة - توليد الأكواد</h2>
           <p className="text-emerald-200/70 mb-4">أحدث كود دخول صالح هو:</p>
-          <div className="bg-emerald-800/30 border-2 border-emerald-500/50 rounded-2xl p-6 mb-4">
-            <span className="text-5xl font-bold text-emerald-300 tracking-widest">{validCodes[0]?.code || '...'}</span>
+          <div className="bg-emerald-900/30 border-2 border-emerald-700/50 rounded-2xl p-6 mb-4">
+            <span className="text-5xl font-bold text-emerald-400 tracking-widest">{validCodes[0]?.code || '...'}</span>
           </div>
           
           <motion.button
@@ -441,34 +497,34 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#064e3b] flex items-center justify-center p-4 font-sans relative overflow-hidden" dir="rtl">
+    <div className="min-h-screen bg-[#0d1b18] flex items-center justify-center p-4 font-sans relative overflow-hidden" dir="rtl">
       {/* Subtle background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[100px] pointer-events-none"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-emerald-900/20 blur-[100px] pointer-events-none"></div>
 
       <motion.div 
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-[#065f46] p-6 md:p-8 rounded-[2rem] shadow-2xl w-full max-w-[400px] border border-emerald-400/20 relative z-10"
+        className="bg-[#11221e] p-6 md:p-8 rounded-[2rem] shadow-2xl w-full max-w-[400px] border border-emerald-800/20 relative z-10"
       >
         <div className="flex flex-col items-center mb-4">
           <motion.div 
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="w-20 h-20 rounded-full border border-emerald-400/30 flex items-center justify-center mb-4 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+            className="w-20 h-20 rounded-full border border-emerald-700/50 flex items-center justify-center mb-4 bg-emerald-900/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
           >
-            <span className="text-4xl font-bold text-emerald-300 font-ruqaa">ع</span>
+            <span className="text-4xl font-bold text-emerald-400 font-ruqaa">ع</span>
           </motion.div>
           <h1 className="text-2xl font-bold text-white font-sans text-center mb-1">
             معرب الجمل العربية
           </h1>
-          <p className="text-emerald-300 text-center text-sm font-medium mb-1">
+          <p className="text-emerald-500 text-center text-sm font-medium mb-1">
             المحلل النحوي الذكي
           </p>
-          <p className="text-emerald-200 text-center text-xs font-medium mb-1 opacity-80">
+          <p className="text-emerald-400 text-center text-xs font-medium mb-1 opacity-80">
             اعداد أ/علاء الوكيل - معلم خبير
           </p>
-          <div className="mt-4 mb-6 px-6 py-6 bg-emerald-800/60 rounded-[2.5rem] border-2 border-emerald-300/40 text-center shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-            <p className="text-emerald-50 font-serif leading-relaxed">
+          <div className="mt-4 mb-6 px-6 py-6 bg-emerald-900/40 rounded-[2.5rem] border-2 border-emerald-500/30 text-center shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+            <p className="text-emerald-100 font-serif leading-relaxed">
               <span className="text-lg block mb-2 opacity-95 font-medium">إهداء خاص إلى الموجه الأول</span>
               <span className="font-bold text-emerald-200 text-3xl block mb-2 drop-shadow-sm">الأستاذة هالة بلال</span>
               <span className="text-sm block opacity-90 font-medium">موجه أول اللغة العربية - إدارة سوهاج التعليمية</span>
@@ -480,9 +536,9 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <label className="text-emerald-300 text-sm font-bold px-1">اكتب كود الدخول</label>
-            <div className={`relative flex items-center bg-white rounded-2xl overflow-hidden transition-all ${error ? 'ring-2 ring-red-500' : 'focus-within:ring-2 focus-within:ring-emerald-400'}`}>
-              <div className="px-4 text-emerald-500">
+            <label className="text-emerald-500 text-sm font-bold px-1">اكتب كود الدخول</label>
+            <div className={`relative flex items-center bg-white rounded-2xl overflow-hidden transition-all ${error ? 'ring-2 ring-red-500' : 'focus-within:ring-2 focus-within:ring-emerald-500'}`}>
+              <div className="px-4 text-emerald-400">
                 <Lock size={20} />
               </div>
               <input
@@ -503,7 +559,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
                 whileTap={{ scale: 0.9 }}
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="px-4 text-emerald-500 hover:text-emerald-700 transition-colors"
+                className="px-4 text-emerald-400 hover:text-emerald-600 transition-colors"
               >
                 <Feather size={20} className={showPassword ? "opacity-100" : "opacity-50"} />
               </motion.button>
@@ -512,7 +568,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
               <motion.p 
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-red-400 text-xs mt-1 px-1 font-bold"
+                className="text-red-500 text-xs mt-1 px-1 font-bold"
               >
                 الكود خطا اتصل بالدعم الفنى
               </motion.p>
@@ -522,7 +578,8 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            type="submit"
+            type="button"
+            onClick={() => onLogin(true)}
             className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-bold py-3 rounded-2xl transition-all text-lg flex items-center justify-center gap-2"
           >
             دخول <Feather size={20} className="rotate-45" />
@@ -534,7 +591,7 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
             href="https://wa.me/201030302005" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-emerald-100 hover:text-white font-medium transition-colors bg-white/10 px-4 py-2 rounded-full text-sm border border-white/10 backdrop-blur-sm"
+            className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-600 font-medium transition-colors bg-emerald-50 px-4 py-2 rounded-full text-sm border border-emerald-100"
           >
             <MessageCircle size={16} />
             الدعم الفنى
@@ -546,6 +603,40 @@ function LoginScreen({ onLogin }: { onLogin: (isTrial: boolean) => void }) {
 }
 
 export default function App() {
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('category_colors');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('category_colors', JSON.stringify(categoryColors));
+  }, [categoryColors]);
+
+  const getCategoryStyles = (category: string) => {
+    if (!category) return { text: 'text-stone-600', badge: 'bg-stone-50 text-stone-600 border-stone-200', bg: 'bg-stone-50/30', border: 'border-stone-200' };
+    
+    // Default colors if not customized
+    const defaultColors: Record<string, string> = {
+      'فعل': 'red',
+      'حرف': 'purple',
+      'ضمير': 'amber',
+      'مرفوع': 'emerald',
+      'منصوب': 'orange',
+      'مجرور': 'cyan',
+      'اسم': 'blue',
+    };
+
+    const customColor = Object.entries(categoryColors).find(([key]) => category.includes(key))?.[1];
+    const color = customColor || Object.entries(defaultColors).find(([key]) => category.includes(key))?.[1] || 'stone';
+
+    return {
+      text: `text-${color}-600`,
+      badge: `bg-${color}-50 text-${color}-600 border-${color}-200`,
+      bg: `bg-${color}-50/30`,
+      border: `border-${color}-100 hover:border-${color}-300`
+    };
+  };
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isTrial, setIsTrial] = useState(false);
   const [trialStartTime, setTrialStartTime] = useState<number | null>(() => {
@@ -611,11 +702,37 @@ export default function App() {
 
   const [showSplash, setShowSplash] = useState(true);
   const [sentence, setSentence] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
   const [mode, setMode] = useState<'full' | 'partial' | 'sentence-position' | 'extract' | 'vocative' | 'convert' | 'notes' | 'compare' | 'detailed'>('full');
-  const [displayMode, setDisplayMode] = useState<'table' | 'separated' | 'cards' | 'bubbles' | 'accordion'>('cards');
+  const [displayMode, setDisplayMode] = useState<'interactive' | 'table' | 'separated' | 'cards' | 'bubbles' | 'accordion' | 'mindmap' | 'list' | 'carousel' | 'grid'>('interactive');
   const [expandedAccordion, setExpandedAccordion] = useState<number | null>(null);
   const [showDisplayModes, setShowDisplayModes] = useState(false);
   const [selectedBubble, setSelectedBubble] = useState<number | null>(null);
+  const [selectedInteractiveWord, setSelectedInteractiveWord] = useState<number | null>(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isDiacritizing, setIsDiacritizing] = useState(false);
+  const [customCategoriesInput, setCustomCategoriesInput] = useState('');
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [sortBy, setSortBy] = useState<'original' | 'word' | 'category' | 'length'>('original');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const ITEMS_PER_PAGE = 24;
+  const displayModesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (displayModesRef.current && !displayModesRef.current.contains(event.target as Node)) {
+        setShowDisplayModes(false);
+      }
+    };
+    if (showDisplayModes) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDisplayModes]);
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -636,7 +753,7 @@ export default function App() {
   const [fontSize, setFontSize] = useState(16);
   const [isChallengeMode, setIsChallengeMode] = useState(false);
   
-  const [activeTab, setActiveTab] = useState<'parser' | 'rules' | 'poetry' | 'spelling' | 'saved'>('parser');
+  const [activeTab, setActiveTab] = useState<'parser' | 'rules' | 'poetry' | 'spelling' | 'quiz' | 'saved'>('parser');
   const [showModeBubbles, setShowModeBubbles] = useState(false);
   const [ruleQuery, setRuleQuery] = useState('');
   const [ruleResult, setRuleResult] = useState('');
@@ -658,6 +775,13 @@ export default function App() {
   const [savedResults, setSavedResults] = useState<any[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
   
+  const [quizTopic, setQuizTopic] = useState('عشوائي');
+  const [quizQuestion, setQuizQuestion] = useState<{ question: string, type: string, context: string } | null>(null);
+  const [quizAnswer, setQuizAnswer] = useState('');
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizEvaluation, setQuizEvaluation] = useState<{ isCorrect: boolean, feedback: string, correctAnswer: string } | null>(null);
+  const [quizEvalLoading, setQuizEvalLoading] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -800,11 +924,24 @@ export default function App() {
     setSentence('');
     setTargetWords('');
     setMode('full');
-    setDisplayMode('cards');
+    setDisplayMode('interactive');
     setRuleQuery('');
     setRuleResult('');
     setImage(null);
     setErrorMessage(null);
+    setCurrentPage(1);
+    setSelectedInteractiveWord(0);
+  };
+
+  const handleRemoveWord = (wordToRemove: AnalyzedWord) => {
+    setResult(prev => prev.filter(item => item !== wordToRemove));
+  };
+
+  const handleRemoveCategory = (categoryToRemove: string) => {
+    setResult(prev => prev.filter(item => item.category !== categoryToRemove));
+    if (filterCategory === categoryToRemove) {
+      setFilterCategory(null);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -841,16 +978,73 @@ export default function App() {
     }
   };
 
+  const handleAutoDiacritize = async () => {
+    if (!sentence.trim()) return;
+    setIsDiacritizing(true);
+    setErrorMessage(null);
+    try {
+      const diacritized = await autoDiacritize(sentence);
+      setSentence(diacritized);
+    } catch (error: any) {
+      setErrorMessage(error.message);
+    } finally {
+      setIsDiacritizing(false);
+    }
+  };
+
+  const triggerSuccessVibration = () => {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      // Vibrate for 50ms, pause for 50ms, vibrate for 50ms
+      navigator.vibrate([50, 50, 50]);
+    }
+  };
+
+  const handleGenerateQuiz = async () => {
+    setQuizLoading(true);
+    setQuizQuestion(null);
+    setQuizAnswer('');
+    setQuizEvaluation(null);
+    try {
+      const question = await generateQuizQuestion(quizTopic);
+      setQuizQuestion(question);
+      triggerSuccessVibration();
+    } catch (error) {
+      console.error(error);
+      setErrorMessage('حدث خطأ أثناء توليد السؤال.');
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  const handleEvaluateQuiz = async () => {
+    if (!quizAnswer.trim() || !quizQuestion) return;
+    
+    setQuizEvalLoading(true);
+    try {
+      const evaluation = await evaluateQuizAnswer(quizQuestion, quizAnswer);
+      setQuizEvaluation(evaluation);
+      triggerSuccessVibration();
+    } catch (error) {
+      console.error(error);
+      setErrorMessage('حدث خطأ أثناء تقييم الإجابة.');
+    } finally {
+      setQuizEvalLoading(false);
+    }
+  };
+
   const handleAnalyze = async () => {
     if (!sentence.trim() && !image) return;
     
     setLoading(true);
     setErrorMessage(null);
     setResult([]); // Clear previous result to show loading indicator initially
-    setDisplayMode('cards');
+    setDisplayMode('interactive');
+    setCurrentPage(1);
+    setSelectedInteractiveWord(0);
     
     try {
       const base64Image = image ? image.split(',')[1] : undefined;
+      const customCategories = customCategoriesInput.split('،').map(c => c.trim()).filter(c => c);
       
       let analysis = await analyzeSentence(
         sentence, 
@@ -858,6 +1052,7 @@ export default function App() {
         targetWords, 
         base64Image, 
         showAllFacets,
+        customCategories.length > 0 ? customCategories : undefined,
         (chunk) => {
           // Update result incrementally
           const validChunk = chunk.filter(item => item && typeof item === 'object' && item.word);
@@ -881,6 +1076,7 @@ export default function App() {
       }
 
       setResult(analysis);
+      triggerSuccessVibration();
     } catch (error: any) {
       console.error(error);
       const msg = error.message || "حدث خطأ غير متوقع. تأكد من إعداد مفتاح API بشكل صحيح.";
@@ -898,6 +1094,7 @@ export default function App() {
     try {
       const result = await searchGrammarRule(ruleQuery);
       setRuleResult(result);
+      triggerSuccessVibration();
     } catch (error) {
       console.error(error);
       setRuleResult('حدث خطأ أثناء البحث.');
@@ -941,6 +1138,7 @@ export default function App() {
     try {
       const result = await analyzePoetry(poetryQuery);
       setPoetryResult(result);
+      triggerSuccessVibration();
     } catch (error) {
       console.error(error);
       setPoetryResult('حدث خطأ أثناء تحليل البيت.');
@@ -958,10 +1156,12 @@ export default function App() {
         const result = await analyzeSpelling(spellingQuery);
         setSpellingResult(result);
         setDictationResult(null);
+        triggerSuccessVibration();
       } else {
         const result = await generateDictation(spellingQuery);
         setDictationResult(result);
         setSpellingResult(null);
+        triggerSuccessVibration();
       }
     } catch (error) {
       console.error(error);
@@ -1143,18 +1343,56 @@ export default function App() {
     );
   };
 
+  const isFocusMode = activeTab === 'parser' && (result.length > 0 || loading);
+
+  const processedResult = useMemo(() => {
+    let res = [...result];
+    
+    if (filterCategory) {
+      res = res.filter(item => item.category === filterCategory);
+    }
+
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      res = res.filter(item => 
+        item.analysis.toLowerCase().includes(lowerQuery) || 
+        item.word.toLowerCase().includes(lowerQuery) ||
+        (item.category && item.category.toLowerCase().includes(lowerQuery))
+      );
+    }
+    
+    if (sortBy !== 'original') {
+      res.sort((a, b) => {
+        let comparison = 0;
+        if (sortBy === 'word') {
+          comparison = a.word.localeCompare(b.word, 'ar');
+        } else if (sortBy === 'category') {
+          comparison = (a.category || '').localeCompare(b.category || '', 'ar');
+        } else if (sortBy === 'length') {
+          comparison = a.word.length - b.word.length;
+        }
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+    }
+    
+    return res;
+  }, [result, sortBy, sortOrder, filterCategory, searchQuery]);
+
   if (!isAuthenticated) {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
+  const totalPages = Math.ceil(processedResult.length / ITEMS_PER_PAGE);
+  const paginatedResult = processedResult.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   return (
-    <ErrorBoundary>
+    <>
       <AnimatePresence>
         {showSplash && <Splash onComplete={() => setShowSplash(false)} />}
       </AnimatePresence>
       
       {!showSplash && (
-        <div className="h-screen overflow-hidden bg-[#f0f9f6] font-sans relative flex flex-col md:flex-row" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
+        <div className="h-screen overflow-hidden bg-[#fdfbf7] font-sans relative flex flex-col md:flex-row" dir="rtl" style={{ fontSize: `${fontSize}px` }}>
           {/* Top Banner for Timer */}
           {isTrial && timeLeft !== null && (
             <div className="w-full bg-red-600 text-white py-3 px-4 shadow-md z-30 relative flex justify-center items-center gap-3 md:fixed md:top-0 md:left-0 md:right-0">
@@ -1167,14 +1405,14 @@ export default function App() {
           )}
 
           {/* Sidebar */}
-          <aside className={`w-full md:w-[340px] bg-[#f8fdfc] border-b md:border-b-0 md:border-l border-emerald-100 flex flex-col z-20 shrink-0 shadow-sm relative ${isTrial ? 'md:mt-14' : ''}`}>
-            <div className="p-4 md:p-6 border-b border-emerald-50 flex flex-col xl:flex-row items-center xl:items-start justify-between gap-4 text-center xl:text-right relative">
+          <aside className={`w-full md:w-[340px] bg-white border-b md:border-b-0 md:border-l border-stone-200 flex flex-col z-20 shrink-0 shadow-sm relative ${isTrial ? 'md:mt-14' : ''} ${isFocusMode ? 'hidden' : ''}`}>
+            <div className="p-4 md:p-6 border-b border-stone-100 flex flex-col xl:flex-row items-center xl:items-start justify-between gap-4 text-center xl:text-right relative">
               <div className="absolute top-4 left-4 z-50">
                 <motion.button 
                   whileHover={{ scale: 1.1 }} 
                   whileTap={{ scale: 0.9 }} 
                   onClick={handleLogout} 
-                  className="bg-white hover:bg-red-50 text-emerald-500 hover:text-red-600 p-2 rounded-full transition-colors shadow-sm border border-emerald-100 flex items-center justify-center" 
+                  className="bg-white hover:bg-red-50 text-stone-500 hover:text-red-600 p-2 rounded-full transition-colors shadow-sm border border-stone-200 flex items-center justify-center" 
                   title="تسجيل الخروج"
                 >
                   <LogOut size={16} />
@@ -1184,21 +1422,21 @@ export default function App() {
                 <motion.div 
                   animate={{ scale: [1, 1.08, 1] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                  className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center shadow-sm shrink-0"
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shadow-sm shrink-0"
                 >
-                  <span className="text-xl md:text-2xl font-bold text-emerald-600 font-ruqaa">ع</span>
+                  <span className="text-xl md:text-2xl font-bold text-brand font-ruqaa">ع</span>
                 </motion.div>
                 <div className="flex flex-col items-start">
-                  <h1 className="text-xl md:text-2xl font-bold text-emerald-800 font-ruqaa whitespace-nowrap">
+                  <h1 className="text-xl md:text-2xl font-bold text-stone-800 font-ruqaa whitespace-nowrap">
                     معرب الجمل
                   </h1>
-                  <span className="text-[10px] md:text-xs font-medium text-emerald-600 mt-1 whitespace-nowrap">
+                  <span className="text-[10px] md:text-xs font-medium text-stone-500 mt-1 whitespace-nowrap">
                     علاء الوكيل
                   </span>
                 </div>
               </div>
               
-              <div className="text-[10px] md:text-xs text-emerald-400 font-serif leading-relaxed opacity-80 italic whitespace-nowrap hidden md:block">
+              <div className="text-[10px] md:text-xs text-stone-400 font-serif leading-relaxed opacity-80 italic whitespace-nowrap hidden md:block">
                 أنا البحرُ في أحشائِهِ الدُّرُّ كامنٌ<br/>
                 فهل سألوا الغوّاصَ عن صدفاتي؟
               </div>
@@ -1210,6 +1448,7 @@ export default function App() {
                 { id: 'rules', label: 'البحث عن قاعدة', icon: <Search size={20} /> },
                 { id: 'poetry', label: 'أبيات شعرية', icon: <Feather size={20} /> },
                 { id: 'spelling', label: 'الإملاء الدقيق', icon: <Check size={20} /> },
+                { id: 'quiz', label: 'اختبر نفسك', icon: <Wand2 size={20} /> },
                 { id: 'saved', label: 'المحفوظات', icon: <Bookmark size={20} /> }
               ].map((tab) => (
                 <motion.button
@@ -1220,7 +1459,7 @@ export default function App() {
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all whitespace-nowrap shadow-sm ${
                     activeTab === tab.id 
                       ? 'bg-brand text-white shadow-brand/20 border border-transparent' 
-                      : 'bg-white text-emerald-700 border border-emerald-100 hover:bg-emerald-50 hover:border-emerald-200'
+                      : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 hover:border-stone-300'
                   }`}
                 >
                   {tab.icon}
@@ -1229,18 +1468,10 @@ export default function App() {
               ))}
             </nav>
 
-            <div className="p-4 border-t border-emerald-50 flex flex-col gap-3">
+            <div className="p-4 border-t border-stone-100 flex flex-col gap-3">
               <div className="flex gap-2">
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 rounded-lg transition-colors shadow-sm flex justify-center items-center text-sm font-bold" title="تكبير الخط">+</motion.button>
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 rounded-lg transition-colors shadow-sm flex justify-center items-center text-sm font-bold" title="تصغير الخط">-</motion.button>
-              </div>
-              
-              <div className="mt-2 pt-3 border-t border-emerald-100/50">
-                <div className="text-[10px] text-emerald-400 font-serif text-center leading-relaxed">
-                  إهداء خاص إلى الموجه الأول<br/>
-                  <span className="font-bold text-emerald-600">الأستاذة هالة بلال</span><br/>
-                  موجه أول اللغة العربية - إدارة سوهاج التعليمية
-                </div>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.min(s + 2, 24))} className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 p-1.5 rounded-lg transition-colors shadow-sm flex justify-center items-center text-sm font-bold" title="تكبير الخط">+</motion.button>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setFontSize(s => Math.max(s - 2, 12))} className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 p-1.5 rounded-lg transition-colors shadow-sm flex justify-center items-center text-sm font-bold" title="تصغير الخط">-</motion.button>
               </div>
             </div>
           </aside>
@@ -1248,73 +1479,71 @@ export default function App() {
           {/* Main Content */}
           <main className={`flex-1 overflow-y-auto relative flex flex-col ${isTrial ? 'md:mt-14' : ''}`}>
             {/* Subtle background pattern/gradient for main app */}
-            <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-emerald-100/30 to-transparent pointer-events-none"></div>
+            <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none"></div>
             
             <div className="p-4 md:p-8 flex-1 flex flex-col">
               <motion.div
                 layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="max-w-4xl mx-auto w-full bg-white p-6 md:p-8 rounded-3xl shadow-xl flex flex-col flex-1 border border-emerald-100 relative z-10"
+                className="max-w-4xl mx-auto w-full bg-white p-6 md:p-8 rounded-3xl shadow-xl flex flex-col flex-1 border border-amber-100 relative z-10"
               >
 
             {activeTab === 'parser' && (
-              <div className="fixed bottom-8 right-8 left-8 z-50 flex flex-row items-center justify-start gap-4 pointer-events-none">
-                <div className="pointer-events-auto shrink-0 relative">
-                  {/* Pulsing ring behind the button */}
-                  {!showModeBubbles && (
-                    <motion.div
-                      animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute inset-0 bg-brand rounded-full z-0"
-                    />
-                  )}
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowModeBubbles(!showModeBubbles)}
-                    className="w-16 h-16 bg-brand text-white rounded-full shadow-2xl flex items-center justify-center transition-transform relative z-10"
+              <div className="fixed bottom-8 right-8 left-8 z-50 flex items-center justify-end pointer-events-none">
+                <motion.div 
+                  className="bg-white/90 backdrop-blur-md border border-stone-200 rounded-full shadow-lg p-2 flex flex-row gap-2 items-center pointer-events-auto overflow-hidden max-w-full"
+                  initial={false}
+                  animate={{ width: isExpanded ? '100%' : '50px' }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                >
+                  <button 
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-brand text-white shrink-0"
                   >
-                    {showModeBubbles ? <X size={28} /> : <LayoutGrid size={28} />}
-                  </motion.button>
-                </div>
-                
-                <AnimatePresence>
-                  {showModeBubbles && (
-                    <div className="flex flex-row gap-3 items-center overflow-x-auto hide-scrollbar py-4 px-2 pointer-events-auto max-w-full">
-                      {[
-                        { id: 'full', label: 'إعراب كامل', icon: <AlignLeft size={20} />, color: 'bg-brand' },
-                        { id: 'partial', label: 'إعراب محدد', icon: <TextCursor size={20} />, color: 'bg-blue-600' },
-                        { id: 'sentence-position', label: 'موقع الجمل', icon: <MapPin size={20} />, color: 'bg-amber-600' },
-                        { id: 'extract', label: 'استخراج', icon: <Filter size={20} />, color: 'bg-purple-600' },
-                        { id: 'vocative', label: 'نوع المنادى', icon: <Megaphone size={20} />, color: 'bg-rose-600' },
-                        { id: 'convert', label: 'تحويل نحوي', icon: <RefreshCw size={20} />, color: 'bg-cyan-600' },
-                        { id: 'notes', label: 'ملاحظات', icon: <StickyNote size={20} />, color: 'bg-indigo-600' },
-                        { id: 'compare', label: 'مقارنات', icon: <AlignJustify size={20} />, color: 'bg-pink-600' },
-                        { id: 'detailed', label: 'التفصيلي جداً', icon: <Sparkles size={20} />, color: 'bg-amber-700' }
-                      ].map((m, index) => (
-                        <motion.button
-                          key={m.id}
-                          initial={{ opacity: 0, x: 50, scale: 0.8 }}
-                          animate={{ opacity: 1, x: 0, scale: 1 }}
-                          exit={{ opacity: 0, x: 50, scale: 0.8 }}
-                          transition={{ delay: index * 0.05 }}
-                          onClick={() => {
-                            setMode(m.id as any);
-                            if (m.id === 'detailed') {
-                              setShowAllFacets(true);
-                            }
-                            setShowModeBubbles(false);
-                          }}
-                          className={`shrink-0 flex items-center gap-3 px-5 py-3 rounded-full shadow-lg transition-colors whitespace-nowrap border ${mode === m.id ? `${m.color} text-white border-transparent` : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-200'}`}
-                        >
-                          <span className="font-bold">{m.label}</span>
-                          {m.icon}
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
-                </AnimatePresence>
+                    {isExpanded ? <X size={16} /> : <LayoutGrid size={16} />}
+                  </button>
+                  
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex flex-row gap-2 items-center overflow-x-auto hide-scrollbar flex-1"
+                        dir="rtl"
+                      >
+                        {[
+                          { id: 'full', label: 'إعراب كامل', icon: <AlignLeft size={16} />, color: 'bg-brand' },
+                          { id: 'partial', label: 'إعراب محدد', icon: <TextCursor size={16} />, color: 'bg-blue-600' },
+                          { id: 'sentence-position', label: 'موقع الجمل', icon: <MapPin size={16} />, color: 'bg-amber-600' },
+                          { id: 'extract', label: 'استخراج', icon: <Filter size={16} />, color: 'bg-purple-600' },
+                          { id: 'vocative', label: 'نوع المنادى', icon: <Megaphone size={16} />, color: 'bg-rose-600' },
+                          { id: 'convert', label: 'تحويل نحوي', icon: <RefreshCw size={16} />, color: 'bg-cyan-600' },
+                          { id: 'notes', label: 'ملاحظات', icon: <StickyNote size={16} />, color: 'bg-indigo-600' },
+                          { id: 'compare', label: 'مقارنات', icon: <AlignJustify size={16} />, color: 'bg-pink-600' },
+                          { id: 'detailed', label: 'إعراب متقدم', icon: <Sparkles size={16} />, color: 'bg-amber-700' }
+                        ].map((m, index) => (
+                          <motion.button
+                            key={m.id}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => {
+                              setMode(m.id as any);
+                              if (m.id === 'detailed') {
+                                setShowAllFacets(true);
+                              }
+                            }}
+                            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full shadow-sm transition-colors whitespace-nowrap border text-sm ${mode === m.id ? `${m.color} text-white border-transparent` : 'bg-white text-stone-700 hover:bg-stone-100 border-stone-200'}`}
+                          >
+                            <span className="font-medium">{m.label}</span>
+                            {m.icon}
+                          </motion.button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               </div>
             )}
             
@@ -1333,6 +1562,17 @@ export default function App() {
                           className="w-full min-h-[150px] text-xl md:text-2xl leading-relaxed p-6 pb-16 border-2 border-stone-200 rounded-2xl focus:ring-4 focus:ring-brand/20 focus:border-brand outline-none resize-y shadow-inner bg-stone-50/50 font-serif"
                         />
                         <div className="absolute bottom-4 left-4 flex gap-2">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={handleAutoDiacritize}
+                            disabled={isDiacritizing || !sentence.trim()}
+                            className={`p-3 rounded-xl transition-all shadow-sm flex items-center gap-2 ${isDiacritizing ? 'bg-stone-100 text-stone-400 cursor-not-allowed' : 'bg-brand/10 hover:bg-brand/20 text-brand border border-brand/20'}`}
+                            title="تشكيل تلقائي"
+                          >
+                            {isDiacritizing ? <Loader2 size={22} className="animate-spin" /> : <Wand2 size={22} />}
+                            <span className="text-sm font-bold hidden sm:inline">تشكيل تلقائي</span>
+                          </motion.button>
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
@@ -1431,6 +1671,66 @@ export default function App() {
                           )}
                         </motion.div>
                       )}
+
+                      {(mode === 'full' || mode === 'partial') && (
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                            className="flex items-center gap-2 text-sm text-stone-500 hover:text-brand transition-colors w-fit"
+                          >
+                            {showAdvancedOptions ? <ChevronDown size={16} /> : <ChevronLeft size={16} />}
+                            خيارات متقدمة (تخصيص التصنيفات)
+                          </button>
+                          
+                          <AnimatePresence>
+                            {showAdvancedOptions && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl mt-2">
+                                  <label className="block text-sm font-bold text-stone-700 mb-2">
+                                    التصنيفات النحوية المخصصة (مفصولة بفاصلة عربية '،')
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={customCategoriesInput}
+                                    onChange={(e) => setCustomCategoriesInput(e.target.value)}
+                                    placeholder="مثال: اسم، فعل، حرف، مبتدأ، خبر، فاعل..."
+                                    className="w-full text-sm p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none bg-white"
+                                  />
+                                  <p className="text-xs text-stone-500 mt-2">
+                                    اترك الحقل فارغاً لاستخدام التصنيفات الافتراضية.
+                                  </p>
+                                  <div className="mt-4">
+                                    <label className="block text-sm font-bold text-stone-700 mb-2">
+                                      تخصيص ألوان التصنيفات
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {['فعل', 'حرف', 'ضمير', 'مرفوع', 'منصوب', 'مجرور', 'اسم'].map(cat => (
+                                        <div key={cat} className="flex items-center gap-2">
+                                          <span className="text-xs text-stone-600 w-12">{cat}</span>
+                                          <select
+                                            value={categoryColors[cat] || 'stone'}
+                                            onChange={(e) => setCategoryColors({...categoryColors, [cat]: e.target.value})}
+                                            className="text-xs p-1 border border-stone-300 rounded flex-1"
+                                          >
+                                            {['red', 'purple', 'amber', 'emerald', 'orange', 'cyan', 'blue', 'stone'].map(color => (
+                                              <option key={color} value={color}>{color}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
                     </div>
 
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex flex-row gap-4 mt-2">
@@ -1524,18 +1824,9 @@ export default function App() {
                             whileTap={{ scale: 0.95 }}
                             onClick={() => setResult([])} 
                             disabled={loading}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold shadow-sm border transition-all ${loading ? 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100 hover:-translate-x-1'}`}
+                            className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold shadow-md border transition-all ${loading ? 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed' : 'bg-brand text-white border-brand hover:bg-brand-light hover:-translate-x-1'}`}
                           >
                             <ArrowRight size={20} className="rotate-180" /> رجوع
-                          </motion.button>
-                          <motion.button 
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={handleClear} 
-                            disabled={loading}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold shadow-sm border transition-all ${loading ? 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}
-                          >
-                            <Trash2 size={20} /> مسح الكل
                           </motion.button>
                         </div>
                         
@@ -1557,7 +1848,7 @@ export default function App() {
                             className={`bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm ${saveSuccess ? 'text-green-600 border-green-200 bg-green-50' : ''}`}
                           >
                             {isSaving ? <Loader2 size={18} className="animate-spin" /> : saveSuccess ? <Check size={18} /> : <Save size={18} />}
-                            {saveSuccess ? 'تم الحفظ' : 'حفظ الإعراب'}
+                            {saveSuccess ? 'تم الحفظ' : 'حفظ'}
                           </motion.button>
                           <motion.button 
                             whileHover={{ scale: 1.05 }}
@@ -1566,40 +1857,192 @@ export default function App() {
                             className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm"
                           >
                             {copied ? <Check size={18} className="text-brand" /> : <Copy size={18} />}
-                            {copied ? 'تم النسخ' : 'نسخ الإعراب'}
-                          </motion.button>
-                          <motion.button 
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={handleShare} 
-                            className="bg-white border border-stone-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm hover:bg-stone-50 font-bold shadow-sm"
-                          >
-                            <Share2 size={18} />
-                            مشاركة
+                            {copied ? 'تم النسخ' : 'نسخ'}
                           </motion.button>
                         </div>
                       </div>
 
-                      <div className="w-full flex justify-center mt-8 mb-8">
-                        <div className="bg-stone-100 p-1.5 rounded-2xl flex items-center gap-1 shadow-inner overflow-x-auto max-w-full">
-                          {[
-                            { id: 'cards', icon: <LayoutGrid size={18} />, label: 'بطاقات' },
-                            { id: 'accordion', icon: <List size={18} />, label: 'طي' },
-                            { id: 'bubbles', icon: <MessageCircle size={18} />, label: 'فقاعات' },
-                            { id: 'table', icon: <Table size={18} />, label: 'جدول' },
-                            { id: 'separated', icon: <AlignJustify size={18} />, label: 'فواصل' }
-                          ].map((mode) => (
-                            <motion.button
-                              key={mode.id}
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => setDisplayMode(mode.id as any)}
-                              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all whitespace-nowrap ${displayMode === mode.id ? 'bg-white shadow-sm text-brand font-bold' : 'text-stone-500 hover:text-stone-700 hover:bg-stone-200/50'}`}
-                            >
-                              {mode.icon}
-                              <span>{mode.label}</span>
-                            </motion.button>
-                          ))}
+                      <div className="w-full flex flex-col items-center mt-8 mb-8 gap-4">
+                        <div className="relative" ref={displayModesRef}>
+                          <button
+                            onClick={() => setShowDisplayModes(!showDisplayModes)}
+                            className="flex items-center gap-3 px-6 py-3 bg-white border border-stone-200 rounded-2xl shadow-sm hover:shadow-md transition-all text-stone-700 font-bold"
+                          >
+                            <span className="text-stone-500">طريقة العرض:</span>
+                            <div className="flex items-center gap-2 text-brand">
+                              {(() => {
+                                const modes = [
+                                  { id: 'interactive', icon: <MousePointerClick size={18} />, label: 'تفاعلي' },
+                                  { id: 'cards', icon: <LayoutGrid size={18} />, label: 'بطاقات' },
+                                  { id: 'accordion', icon: <List size={18} />, label: 'طي' },
+                                  { id: 'bubbles', icon: <MessageCircle size={18} />, label: 'فقاعات' },
+                                  { id: 'table', icon: <Table size={18} />, label: 'جدول' },
+                                  { id: 'separated', icon: <AlignJustify size={18} />, label: 'فواصل' },
+                                  { id: 'mindmap', icon: <Network size={18} />, label: 'خريطة ذهنية' },
+                                  { id: 'list', icon: <AlignLeft size={18} />, label: 'قائمة' },
+                                  { id: 'carousel', icon: <GalleryHorizontal size={18} />, label: 'دوار' },
+                                  { id: 'grid', icon: <Grid size={18} />, label: 'شبكة' }
+                                ];
+                                const current = modes.find(m => m.id === displayMode);
+                                return (
+                                  <>
+                                    {current?.icon}
+                                    <span>{current?.label}</span>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                            <ChevronDown size={18} className={`text-stone-400 transition-transform ${showDisplayModes ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          <AnimatePresence>
+                            {showDisplayModes && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                className="absolute top-full mt-2 right-0 w-64 bg-white border border-stone-200 rounded-2xl shadow-xl z-50 overflow-hidden"
+                              >
+                                <div className="max-h-80 overflow-y-auto p-2 flex flex-col gap-1">
+                                  {[
+                                    { id: 'interactive', icon: <MousePointerClick size={18} />, label: 'تفاعلي' },
+                                    { id: 'cards', icon: <LayoutGrid size={18} />, label: 'بطاقات' },
+                                    { id: 'accordion', icon: <List size={18} />, label: 'طي' },
+                                    { id: 'bubbles', icon: <MessageCircle size={18} />, label: 'فقاعات' },
+                                    { id: 'table', icon: <Table size={18} />, label: 'جدول' },
+                                    { id: 'separated', icon: <AlignJustify size={18} />, label: 'فواصل' },
+                                    { id: 'mindmap', icon: <Network size={18} />, label: 'خريطة ذهنية' },
+                                    { id: 'list', icon: <AlignLeft size={18} />, label: 'قائمة' },
+                                    { id: 'carousel', icon: <GalleryHorizontal size={18} />, label: 'دوار' },
+                                    { id: 'grid', icon: <Grid size={18} />, label: 'شبكة' }
+                                  ].map((mode) => (
+                                    <button
+                                      key={mode.id}
+                                      onClick={() => {
+                                        setDisplayMode(mode.id as any);
+                                        setShowDisplayModes(false);
+                                      }}
+                                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${displayMode === mode.id ? 'bg-brand/10 text-brand font-bold' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+                                    >
+                                      <div className={displayMode === mode.id ? 'text-brand' : 'text-stone-400'}>
+                                        {mode.icon}
+                                      </div>
+                                      <span>{mode.label}</span>
+                                      {displayMode === mode.id && <Check size={16} className="mr-auto text-brand" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* Filter & Sort Options */}
+                        <div className="flex flex-col gap-4 mt-4 w-full max-w-4xl bg-white p-4 rounded-xl border border-stone-200 shadow-sm" dir="rtl">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="relative w-full sm:w-64">
+                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <Search size={16} className="text-stone-400" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="ابحث في الإعراب أو الكلمات..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-3 pr-10 py-2 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
+                              />
+                              {searchQuery && (
+                                <button
+                                  onClick={() => setSearchQuery('')}
+                                  className="absolute inset-y-0 left-0 pl-3 flex items-center text-stone-400 hover:text-stone-600"
+                                >
+                                  <X size={14} />
+                                </button>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-bold text-stone-600 flex items-center gap-1">
+                                <ArrowUpDown size={16} /> ترتيب حسب:
+                              </span>
+                              <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value as any)}
+                                className="text-sm p-2 rounded-lg border border-stone-200 bg-stone-50 focus:ring-2 focus:ring-brand/20 outline-none"
+                              >
+                                <option value="original">الترتيب الأصلي</option>
+                                <option value="word">الكلمة أبجدياً</option>
+                                <option value="category">التصنيف</option>
+                                <option value="length">طول الكلمة</option>
+                              </select>
+                              
+                              {sortBy !== 'original' && (
+                                <button
+                                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                  className="p-2 rounded-lg border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-600 transition-colors"
+                                  title={sortOrder === 'asc' ? 'تصاعدي' : 'تنازلي'}
+                                >
+                                  {sortOrder === 'asc' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+                                </button>
+                              )}
+                              <button
+                                onClick={async () => {
+                                  const shareData = {
+                                    title: 'نتائج إعراب الجملة',
+                                    text: `إليك نتائج إعراب الجملة: "${sentence}"\n\n${result.map(r => `${r.word}: ${r.analysis}`).join('\n')}`,
+                                    url: window.location.href,
+                                  };
+                                  try {
+                                    if (navigator.share) {
+                                      await navigator.share(shareData);
+                                    } else {
+                                      await navigator.clipboard.writeText(`${shareData.text}\n\n${shareData.url}`);
+                                      alert('تم نسخ الرابط والنتائج إلى الحافظة!');
+                                    }
+                                  } catch (err) {
+                                    console.error('Error sharing:', err);
+                                  }
+                                }}
+                                className="p-2 rounded-lg border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-600 transition-colors"
+                                title="مشاركة"
+                              >
+                                <Share2 size={18} />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-stone-100">
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-bold text-stone-600 flex items-center gap-1">
+                                <Filter size={16} /> تصفية:
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => setFilterCategory(null)}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${filterCategory === null ? 'bg-stone-800 text-white border-stone-800' : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'}`}
+                                >
+                                  الكل
+                                </button>
+                                {Array.from(new Set(result.map(item => item.category))).filter(Boolean).map((category, idx) => (
+                                  <div key={idx} className="flex items-center">
+                                    <button
+                                      onClick={() => setFilterCategory(filterCategory === category ? null : category)}
+                                      className={`px-3 py-1.5 rounded-r-full text-xs font-bold transition-all border border-l-0 ${filterCategory === category ? 'bg-brand text-white border-brand shadow-md' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'}`}
+                                    >
+                                      {category}
+                                    </button>
+                                    <button
+                                      onClick={() => handleRemoveCategory(category)}
+                                      className={`px-2 py-1.5 rounded-l-full text-xs transition-all border border-r-0 flex items-center justify-center ${filterCategory === category ? 'bg-brand text-white border-brand hover:bg-red-500 hover:border-red-500' : 'bg-white text-stone-400 border-stone-200 hover:bg-red-50 hover:text-red-500'}`}
+                                      title="حذف هذا التصنيف"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1614,7 +2057,62 @@ export default function App() {
                           transition={{ duration: 0.3, ease: "easeInOut" }}
                           className="w-full"
                         >
-                          {displayMode === 'bubbles' ? (
+                          {displayMode === 'interactive' ? (
+                        <div className="flex flex-col gap-8 p-8 items-center">
+                          <div className="flex flex-wrap justify-center gap-3 rtl leading-loose">
+                            {paginatedResult.map((item, index) => {
+                              return (
+                                <motion.button
+                                  key={index}
+                                  whileHover={{ scale: 1.05, y: -2 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => setSelectedInteractiveWord(index)}
+                                  className={`text-2xl md:text-4xl font-serif font-bold px-4 py-2 rounded-2xl transition-all ${selectedInteractiveWord === index ? 'bg-brand text-white shadow-lg scale-110' : `bg-white ${getCategoryStyles(item.category).text} hover:bg-stone-100 shadow-sm border border-stone-200`}`}
+                                >
+                                  {colorizeDiacritics(item.word)}
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+                          
+                          <AnimatePresence mode="wait">
+                            {selectedInteractiveWord !== null && paginatedResult[selectedInteractiveWord] && (
+                              <motion.div
+                                key={selectedInteractiveWord}
+                                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                                transition={{ type: "spring", bounce: 0.4 }}
+                                className={`w-full max-w-3xl p-8 rounded-3xl shadow-xl border ${getCategoryStyles(paginatedResult[selectedInteractiveWord].category).bg} ${getCategoryStyles(paginatedResult[selectedInteractiveWord].category).border}`}
+                              >
+                                <div className="flex justify-between items-center mb-6 border-b border-stone-200/50 pb-4">
+                                  <div className="flex items-center gap-4">
+                                    <h3 className={`text-3xl font-serif font-bold ${getCategoryStyles(paginatedResult[selectedInteractiveWord].category).text}`}>
+                                      {colorizeDiacritics(paginatedResult[selectedInteractiveWord].word)}
+                                    </h3>
+                                    <button
+                                      onClick={() => {
+                                        handleRemoveWord(paginatedResult[selectedInteractiveWord]);
+                                        setSelectedInteractiveWord(null);
+                                      }}
+                                      className="p-2 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                      title="حذف هذه الكلمة"
+                                    >
+                                      <X size={20} />
+                                    </button>
+                                  </div>
+                                  <span className={`px-4 py-2 rounded-full text-sm font-bold border ${getCategoryStyles(paginatedResult[selectedInteractiveWord].category).badge}`}>
+                                    {paginatedResult[selectedInteractiveWord].category}
+                                  </span>
+                                </div>
+                                <div className="text-2xl leading-[2.2] text-stone-900 font-serif bg-white/60 p-6 rounded-2xl shadow-sm border border-white/50">
+                                  {isChallengeMode ? '...' : <AnalysisText text={paginatedResult[selectedInteractiveWord].analysis} />}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      ) : displayMode === 'bubbles' ? (
                         <div className="flex flex-col gap-6 p-4">
                           {/* Middle Section: Legend & Info */}
                           <div className="flex flex-wrap items-center justify-center gap-4" dir="rtl">
@@ -1633,7 +2131,7 @@ export default function App() {
 
                           {/* Bottom Box: Word Bubbles */}
                           <div className="bg-white border border-stone-200 rounded-2xl p-8 shadow-sm flex flex-wrap justify-center gap-4" dir="rtl">
-                            {result.map((item, index) => (
+                            {paginatedResult.map((item, index) => (
                               <div key={index} className="relative cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedBubble(selectedBubble === index ? null : index); }}>
                                 <motion.div
                                   layout
@@ -1660,14 +2158,25 @@ export default function App() {
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${getCategoryStyles(item.category).badge}`}>
                                           {item.category}
                                         </span>
-                                        <motion.button 
-                                          whileHover={{ scale: 1.1 }}
-                                          whileTap={{ scale: 0.9 }}
-                                          onClick={(e) => { e.stopPropagation(); setSelectedBubble(null); }}
-                                          className="text-stone-400 hover:text-stone-600 transition-colors p-1"
-                                        >
-                                          <X size={18} />
-                                        </motion.button>
+                                        <div className="flex items-center gap-1">
+                                          <motion.button
+                                            whileHover={{ scale: 1.1 }}
+                                            whileTap={{ scale: 0.9 }}
+                                            onClick={(e) => { e.stopPropagation(); handleRemoveWord(item); setSelectedBubble(null); }}
+                                            className="text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors p-1 rounded-full"
+                                            title="حذف هذه الكلمة"
+                                          >
+                                            <Trash2 size={16} />
+                                          </motion.button>
+                                          <motion.button 
+                                            whileHover={{ scale: 1.1 }}
+                                            whileTap={{ scale: 0.9 }}
+                                            onClick={(e) => { e.stopPropagation(); setSelectedBubble(null); }}
+                                            className="text-stone-400 hover:text-stone-600 transition-colors p-1 rounded-full"
+                                          >
+                                            <X size={18} />
+                                          </motion.button>
+                                        </div>
                                       </div>
                                       
                                       <div className="text-center mb-4">
@@ -1676,7 +2185,7 @@ export default function App() {
                                         </div>
                                       </div>
                                       
-                                      <div className="text-stone-700 text-sm leading-relaxed text-center border-t border-stone-100 pt-4">
+                                      <div className="text-stone-900 leading-[1.8] text-center border-t border-stone-100 pt-4 font-serif" style={{ fontSize: '1.15em' }}>
                                         {isChallengeMode ? '...' : <AnalysisText text={item.analysis.includes(':') && item.analysis.split(':')[0].trim().split(' ').length <= 2 
                                           ? item.analysis.split(':').slice(1).join(':').trim() 
                                           : item.analysis} />}
@@ -1692,28 +2201,16 @@ export default function App() {
                         </div>
                       ) : displayMode === 'cards' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-                          {result.map((item, index) => (
-                            <motion.div
-                              layout
-                              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              transition={{ delay: index * 0.05 }}
+                          {paginatedResult.map((item, index) => (
+                            <AnalysisCard
                               key={index}
-                              className={`p-6 rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col gap-4 group border ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}
-                              dir="rtl"
-                            >
-                              <div className="flex justify-between items-center border-b border-stone-50 pb-4">
-                                <span className={`font-bold font-serif group-hover:scale-105 transition-transform ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.75em' }}>
-                                  {colorizeDiacritics(item.word)}
-                                </span>
-                                <span className={`px-4 py-1.5 rounded-full border font-bold text-xs ${getCategoryStyles(item.category).badge}`}>
-                                  {item.category}
-                                </span>
-                              </div>
-                              <div className="text-stone-700 leading-relaxed font-serif text-right" style={{ fontSize: '1.15em' }}>
-                                {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
-                              </div>
-                            </motion.div>
+                              index={index}
+                              word={colorizeDiacritics(item.word)}
+                              analysis={isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
+                              category={item.category}
+                              categoryStyles={getCategoryStyles(item.category)}
+                              onRemove={() => handleRemoveWord(item)}
+                            />
                           ))}
                         </div>
                       ) : displayMode === 'table' ? (
@@ -1724,10 +2221,11 @@ export default function App() {
                                 <th className="p-4 font-bold whitespace-nowrap" style={{ fontSize: '1.125em' }}>الكلمة</th>
                                 <th className="p-4 font-bold whitespace-nowrap" style={{ fontSize: '1.125em' }}>التصنيف</th>
                                 <th className="p-4 font-bold" style={{ fontSize: '1.125em' }}>الإعراب</th>
+                                <th className="p-4 font-bold w-12"></th>
                               </tr>
                             </thead>
                             <tbody>
-                              {result.map((item, index) => (
+                              {paginatedResult.map((item, index) => (
                                 <motion.tr 
                                   layout
                                   initial={{ opacity: 0, x: -20 }}
@@ -1742,8 +2240,17 @@ export default function App() {
                                   <td className="p-5 font-medium whitespace-nowrap" style={{ fontSize: '1.125em' }}>
                                     <span className={`px-4 py-1.5 rounded-full border font-bold inline-block ${getCategoryStyles(item.category).badge}`} style={{ fontSize: '0.875em' }}>{item.category}</span>
                                   </td>
-                                  <td className="p-5 text-stone-800 leading-relaxed min-w-[300px]" style={{ fontSize: '1.25em' }}>
+                                  <td className="p-5 text-stone-900 leading-[1.8] font-serif min-w-[300px]" style={{ fontSize: '1.25em' }}>
                                     {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
+                                  </td>
+                                  <td className="p-5 text-center">
+                                    <button
+                                      onClick={() => handleRemoveWord(item)}
+                                      className="p-2 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                      title="حذف هذه الكلمة"
+                                    >
+                                      <X size={18} />
+                                    </button>
                                   </td>
                                 </motion.tr>
                               ))}
@@ -1752,7 +2259,7 @@ export default function App() {
                         </div>
                       ) : displayMode === 'accordion' ? (
                         <div className="flex flex-col gap-3 p-4">
-                          {result.map((item, index) => (
+                          {paginatedResult.map((item, index) => (
                             <div key={index} className={`rounded-2xl border shadow-sm overflow-hidden ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}>
                               <button
                                 onClick={() => setExpandedAccordion(expandedAccordion === index ? null : index)}
@@ -1767,7 +2274,16 @@ export default function App() {
                                     {item.category}
                                   </span>
                                 </div>
-                                <ChevronDown size={20} className={`text-stone-400 transition-transform duration-300 ${expandedAccordion === index ? 'rotate-180' : ''}`} />
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleRemoveWord(item); }}
+                                    className="p-1.5 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="حذف هذه الكلمة"
+                                  >
+                                    <X size={18} />
+                                  </button>
+                                  <ChevronDown size={20} className={`text-stone-400 transition-transform duration-300 ${expandedAccordion === index ? 'rotate-180' : ''}`} />
+                                </div>
                               </button>
                               <AnimatePresence>
                                 {expandedAccordion === index && (
@@ -1780,7 +2296,7 @@ export default function App() {
                                     dir="rtl"
                                   >
                                     <div className="p-5 pt-0 border-t border-stone-100 bg-stone-50/50">
-                                      <div className="text-stone-700 leading-relaxed font-serif text-right mt-4" style={{ fontSize: '1.15em' }}>
+                                      <div className="text-stone-900 leading-[1.8] font-serif text-right mt-4" style={{ fontSize: '1.2em' }}>
                                         {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
                                       </div>
                                     </div>
@@ -1790,17 +2306,130 @@ export default function App() {
                             </div>
                           ))}
                         </div>
+                      ) : displayMode === 'mindmap' ? (
+                        <MindmapView 
+                          sentence={sentence} 
+                          result={paginatedResult} 
+                          getCategoryStyles={getCategoryStyles} 
+                          colorizeDiacritics={colorizeDiacritics} 
+                          onRemove={handleRemoveWord}
+                        />
+                      ) : displayMode === 'list' ? (
+                        <div className="flex flex-col gap-2 p-4">
+                          {paginatedResult.map((item, index) => (
+                            <motion.div
+                              layout
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              key={index}
+                              className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border shadow-sm group relative gap-4 ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-grow">
+                                <div className="flex items-center justify-between sm:w-48 shrink-0">
+                                  <span className={`font-bold font-serif ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.25em' }}>
+                                    {colorizeDiacritics(item.word)}
+                                  </span>
+                                  <span className={`px-3 py-1 rounded-full border font-bold text-xs whitespace-nowrap ${getCategoryStyles(item.category).badge}`}>
+                                    {item.category}
+                                  </span>
+                                </div>
+                                <div className="text-stone-900 leading-[1.8] font-serif flex-grow text-right sm:pr-4 sm:border-r border-stone-200/50 pt-2 sm:pt-0 border-t sm:border-t-0" style={{ fontSize: '1.15em' }}>
+                                  {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleRemoveWord(item)}
+                                className="absolute top-2 left-2 sm:static p-1.5 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors sm:opacity-0 group-hover:opacity-100 shrink-0 sm:mr-4"
+                                title="حذف هذه الكلمة"
+                              >
+                                <X size={16} />
+                              </button>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : displayMode === 'carousel' ? (
+                        <div className="flex overflow-x-auto gap-6 p-4 pb-8 hide-scrollbar snap-x snap-mandatory" dir="rtl">
+                          {paginatedResult.map((item, index) => (
+                            <motion.div
+                              layout
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: index * 0.05 }}
+                              key={index}
+                              className={`shrink-0 w-80 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col gap-4 group border relative snap-center ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}
+                            >
+                              <button
+                                onClick={() => handleRemoveWord(item)}
+                                className="absolute top-4 left-4 p-1.5 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 z-10"
+                                title="حذف هذه الكلمة"
+                              >
+                                <X size={16} />
+                              </button>
+                              <div className="flex justify-between items-center border-b border-stone-100 pb-4">
+                                <h3 className={`font-bold font-serif ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.75em' }}>
+                                  {colorizeDiacritics(item.word)}
+                                </h3>
+                                <span className={`px-3 py-1 rounded-full border font-bold text-xs ${getCategoryStyles(item.category).badge}`}>
+                                  {item.category}
+                                </span>
+                              </div>
+                              <div className="text-stone-900 leading-[1.8] font-serif text-right overflow-y-auto max-h-48 hide-scrollbar" style={{ fontSize: '1.2em' }}>
+                                {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : displayMode === 'grid' ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                          {paginatedResult.map((item, index) => (
+                            <motion.div
+                              layout
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: index * 0.05 }}
+                              key={index}
+                              className={`p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col gap-3 group border relative ${getCategoryStyles(item.category).bg} ${getCategoryStyles(item.category).border}`}
+                            >
+                              <button
+                                onClick={() => handleRemoveWord(item)}
+                                className="absolute top-3 left-3 p-1.5 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 z-10"
+                                title="حذف هذه الكلمة"
+                              >
+                                <X size={16} />
+                              </button>
+                              <div className="flex flex-col gap-2 border-b border-stone-100 pb-3">
+                                <h3 className={`font-bold font-serif ${getCategoryStyles(item.category).text}`} style={{ fontSize: '1.5em' }}>
+                                  {colorizeDiacritics(item.word)}
+                                </h3>
+                                <span className={`self-start px-2.5 py-1 rounded-full border font-bold text-[10px] ${getCategoryStyles(item.category).badge}`}>
+                                  {item.category}
+                                </span>
+                              </div>
+                              <div className="text-stone-900 leading-[1.8] font-serif text-right" style={{ fontSize: '1.1em' }}>
+                                {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
                       ) : (
                         <div className="space-y-4 p-4">
-                          {result.map((item, index) => (
+                          {paginatedResult.map((item, index) => (
                             <motion.div 
                               layout
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: index * 0.05 }}
                               key={index}
-                              className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm flex items-start gap-4 hover:border-brand/20 transition-colors"
+                              className={`bg-white p-6 rounded-3xl border border-stone-100 shadow-sm flex items-start gap-4 hover:border-brand/20 transition-colors relative group`}
                             >
+                              <button
+                                onClick={() => handleRemoveWord(item)}
+                                className="absolute top-4 left-4 p-1.5 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                                title="حذف هذه الكلمة"
+                              >
+                                <X size={16} />
+                              </button>
                               <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center font-bold font-serif text-xl ${getCategoryStyles(item.category).badge}`}>
                                 {colorizeDiacritics(item.word.charAt(0))}
                               </div>
@@ -1808,7 +2437,7 @@ export default function App() {
                                 <h4 className={`font-bold font-serif text-xl mb-1 ${getCategoryStyles(item.category).text}`}>
                                   {colorizeDiacritics(item.word)}
                                 </h4>
-                                <p className="text-stone-700 leading-relaxed font-serif text-lg">
+                                <p className="text-stone-900 leading-[1.8] font-serif text-lg">
                                   {isChallengeMode ? '...' : <AnalysisText text={item.analysis} />}
                                 </p>
                               </div>
@@ -1818,6 +2447,40 @@ export default function App() {
                       )}
                         </motion.div>
                       </AnimatePresence>
+                      
+                      {/* Pagination Controls */}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center items-center gap-4 py-6 border-t border-stone-100 mt-4" dir="rtl">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); setSelectedInteractiveWord(0); }}
+                            disabled={currentPage === 1}
+                            className="p-2 rounded-xl bg-white border border-stone-200 text-stone-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-stone-50 shadow-sm"
+                          >
+                            <ChevronRight size={24} />
+                          </motion.button>
+                          
+                          <div className="flex items-center gap-2">
+                            <span className="text-stone-500 font-medium">صفحة</span>
+                            <span className="bg-brand/10 text-brand font-bold px-3 py-1 rounded-lg min-w-[2.5rem] text-center">
+                              {currentPage}
+                            </span>
+                            <span className="text-stone-500 font-medium">من</span>
+                            <span className="font-bold text-stone-700">{totalPages}</span>
+                          </div>
+                          
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); setSelectedInteractiveWord(0); }}
+                            disabled={currentPage === totalPages}
+                            className="p-2 rounded-xl bg-white border border-stone-200 text-stone-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-stone-50 shadow-sm"
+                          >
+                            <ChevronLeft size={24} />
+                          </motion.button>
+                        </div>
+                      )}
                       
                       {loading && (
                         <div className="flex justify-center items-center py-8">
@@ -2001,6 +2664,119 @@ export default function App() {
                 </AnimatePresence>
               </motion.div>
             )}
+            {activeTab === 'quiz' && (
+              <motion.div key="quiz" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex flex-col gap-6">
+                <h2 className="text-2xl font-bold text-stone-800 flex items-center gap-2 mb-4">
+                  <Wand2 className="text-brand" />
+                  اختبر نفسك
+                </h2>
+                
+                <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex flex-col gap-4">
+                  <label className="font-bold text-stone-700">اختر موضوع الاختبار:</label>
+                  <select 
+                    value={quizTopic} 
+                    onChange={(e) => setQuizTopic(e.target.value)}
+                    className="p-4 text-lg border-2 border-stone-200 rounded-xl focus:ring-4 focus:ring-brand/20 focus:border-brand outline-none bg-stone-50/50"
+                  >
+                    <option value="عشوائي">عشوائي (شامل)</option>
+                    <option value="اسم الفاعل">اسم الفاعل</option>
+                    <option value="اسم المفعول">اسم المفعول</option>
+                    <option value="صيغ المبالغة">صيغ المبالغة</option>
+                    <option value="اسم الآلة">اسم الآلة</option>
+                    <option value="الحال">الحال (مفرد، جملة، شبه جملة)</option>
+                    <option value="التمييز">التمييز</option>
+                    <option value="المنادى">المنادى</option>
+                    <option value="الممنوع من الصرف">الممنوع من الصرف</option>
+                  </select>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleGenerateQuiz}
+                    disabled={quizLoading}
+                    className="bg-brand text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-brand/30 hover:bg-brand-light transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {quizLoading ? <Loader2 className="animate-spin" /> : <Wand2 />}
+                    {quizLoading ? 'جاري توليد السؤال...' : 'ابدأ التحدي'}
+                  </motion.button>
+                </div>
+
+                <AnimatePresence>
+                  {quizQuestion && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex flex-col gap-6">
+                      <div className="bg-stone-50 p-6 rounded-xl border border-stone-100">
+                        <span className="inline-block bg-brand/10 text-brand px-3 py-1 rounded-lg text-sm font-bold mb-4">
+                          {quizQuestion.type}
+                        </span>
+                        <p className="text-xl md:text-2xl font-serif leading-loose text-stone-800">
+                          {colorizeDiacritics(quizQuestion.question)}
+                        </p>
+                        {quizQuestion.context && (
+                          <p className="text-stone-500 mt-4 text-sm bg-white p-3 rounded-lg border border-stone-200">
+                            {quizQuestion.context}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-4">
+                        <textarea
+                          value={quizAnswer}
+                          onChange={(e) => setQuizAnswer(e.target.value)}
+                          placeholder="اكتب إجابتك هنا..."
+                          className="w-full min-h-[120px] text-lg p-4 border-2 border-stone-200 rounded-xl focus:ring-4 focus:ring-brand/20 focus:border-brand outline-none resize-y bg-stone-50/50"
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={handleEvaluateQuiz}
+                          disabled={quizEvalLoading || !quizAnswer.trim()}
+                          className="bg-stone-800 text-white py-3 px-6 rounded-xl font-bold hover:bg-stone-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 self-end"
+                        >
+                          {quizEvalLoading ? <Loader2 className="animate-spin" /> : <Check />}
+                          تحقق من الإجابة
+                        </motion.button>
+                      </div>
+
+                      <AnimatePresence>
+                        {quizEvaluation && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className={`p-6 rounded-xl border ${quizEvaluation.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${quizEvaluation.isCorrect ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                {quizEvaluation.isCorrect ? <Check size={24} /> : <X size={24} />}
+                              </div>
+                              <h3 className={`text-xl font-bold ${quizEvaluation.isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                                {quizEvaluation.isCorrect ? 'إجابة صحيحة! أحسنت' : 'إجابة غير دقيقة'}
+                              </h3>
+                            </div>
+                            
+                            <div className="space-y-4 text-stone-800 leading-relaxed font-serif text-lg">
+                              <p>{quizEvaluation.feedback}</p>
+                              {!quizEvaluation.isCorrect && (
+                                <div className="bg-white p-4 rounded-lg border border-red-100 mt-4">
+                                  <span className="font-bold text-red-800 block mb-2">الإجابة النموذجية:</span>
+                                  {quizEvaluation.correctAnswer}
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="mt-6 flex justify-end">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={handleGenerateQuiz}
+                                className="bg-white border border-stone-200 text-stone-700 px-6 py-2 rounded-lg font-bold hover:bg-stone-50 transition-colors shadow-sm"
+                              >
+                                سؤال آخر
+                              </motion.button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
             {activeTab === 'saved' && (
               <motion.div key="saved" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex flex-col gap-4">
                 <div className="flex justify-between items-center mb-4">
@@ -2060,7 +2836,8 @@ export default function App() {
                                item.mode === 'notes' ? 'ملاحظات' : 
                                item.mode === 'compare' ? 'مقارنة' : 
                                item.mode === 'sentence-position' ? 'موقع الجمل' : 
-                               item.mode === 'vocative' ? 'منادى' : item.mode}
+                               item.mode === 'vocative' ? 'منادى' : 
+                               item.mode === 'detailed' ? 'إعراب متقدم' : item.mode}
                             </span>
                             <span className="text-stone-400 text-sm">
                               {item.createdAt?.toDate ? new Date(item.createdAt.toDate()).toLocaleDateString('ar-EG') : ''}
@@ -2121,6 +2898,6 @@ export default function App() {
           </main>
         </div>
       )}
-    </ErrorBoundary>
+    </>
   );
 }

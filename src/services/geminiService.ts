@@ -2,13 +2,14 @@ import { AnalyzedWord, SpellingResult } from "../types";
 
 // نظام تخزين مؤقت متطور يحفظ النتائج في localStorage لسرعة الوصول وتقليل استهلاك الـ API
 const CACHE_NAME = 'arabic_grammar_app_cache_v1';
-const MAX_CACHE_ITEMS = 50;
+const MAX_CACHE_ITEMS = 100; // Increased limit
 
 const getPersistentCache = (): Map<string, any> => {
   try {
     const saved = localStorage.getItem(CACHE_NAME);
     if (saved) {
       const parsed = JSON.parse(saved);
+      // Map preserves insertion order, which we use for LRU
       return new Map(parsed);
     }
   } catch (e) {
@@ -19,7 +20,7 @@ const getPersistentCache = (): Map<string, any> => {
 
 const savePersistentCache = (cache: Map<string, any>) => {
   try {
-    // الحفاظ على حجم معقول للتخزين المؤقت
+    // Prune oldest items if limit exceeded
     if (cache.size > MAX_CACHE_ITEMS) {
       const keys = Array.from(cache.keys());
       for (let i = 0; i < cache.size - MAX_CACHE_ITEMS; i++) {
@@ -32,6 +33,12 @@ const savePersistentCache = (cache: Map<string, any>) => {
   }
 };
 
+// Helper to update access order for LRU
+const updateCacheAccess = (cache: Map<string, any>, key: string, value: any) => {
+  cache.delete(key);
+  cache.set(key, value);
+};
+
 const apiCache = getPersistentCache();
 
 export async function analyzeSentence(
@@ -40,12 +47,16 @@ export async function analyzeSentence(
   targetWords?: string, 
   image?: string, 
   showAllFacets?: boolean, 
+  customCategories?: string[],
   onChunk?: (words: AnalyzedWord[]) => void
 ): Promise<AnalyzedWord[]> {
-  const cacheKey = `analyze_${mode}_${sentence.trim()}_${targetWords?.trim() || ''}_${image ? 'with_image' : 'no_image'}_${showAllFacets ? 'all_facets' : 'normal'}`;
+  const categoriesKey = customCategories?.join(',') || 'default';
+  const cacheKey = `analyze_${mode}_${sentence.trim()}_${targetWords?.trim() || ''}_${image ? 'with_image' : 'no_image'}_${showAllFacets ? 'all_facets' : 'normal'}_${categoriesKey}`;
   
   if (apiCache.has(cacheKey)) {
     const cached = apiCache.get(cacheKey);
+    updateCacheAccess(apiCache, cacheKey, cached); // Update access order
+    savePersistentCache(apiCache);
     if (onChunk) {
       // محاكاة التدفق للنتائج المخزنة لتحسين تجربة المستخدم
       onChunk(cached);
@@ -57,7 +68,7 @@ export async function analyzeSentence(
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sentence, mode, targetWords, image, showAllFacets })
+      body: JSON.stringify({ sentence, mode, targetWords, image, showAllFacets, customCategories })
     });
 
     if (!response.ok) {
@@ -118,20 +129,24 @@ export async function analyzeSentence(
     return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);
-    const errorMessage = error.message || String(error);
-    
-    if (errorMessage && errorMessage !== "Failed to fetch") {
-      throw new Error(`خطأ في السيرفر: ${errorMessage}`);
+
+    // Check for network errors
+    if (error instanceof TypeError || error.message === "Failed to fetch") {
+      throw new Error("تعذر الاتصال بالخادم. يرجى التأكد من جودة اتصالك بالإنترنت.");
     }
-    
-    throw new Error("فقد الاتصال بالخادم. يرجى التأكد من تشغيل السيرفر وجودة اتصالك بالإنترنت.");
+
+    // Server-side or API-specific errors
+    throw new Error(`خطأ في معالجة الطلب: ${error.message || 'حدث خطأ غير متوقع'}`);
   }
 }
 
 export async function searchGrammarRule(ruleName: string, retryCount = 0): Promise<string> {
   const cacheKey = `rule_${ruleName.trim()}`;
   if (apiCache.has(cacheKey)) {
-    return apiCache.get(cacheKey);
+    const cached = apiCache.get(cacheKey);
+    updateCacheAccess(apiCache, cacheKey, cached);
+    savePersistentCache(apiCache);
+    return cached;
   }
 
   try {
@@ -160,6 +175,10 @@ export async function searchGrammarRule(ruleName: string, retryCount = 0): Promi
     return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);
+    const errorMessage = error.message || String(error);
+    if (errorMessage && errorMessage !== "Failed to fetch") {
+      return `خطأ في السيرفر: ${errorMessage}`;
+    }
     return "فقد الاتصال بالخادم. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.";
   }
 }
@@ -167,7 +186,10 @@ export async function searchGrammarRule(ruleName: string, retryCount = 0): Promi
 export async function analyzePoetry(verse: string, retryCount = 0): Promise<string> {
   const cacheKey = `poetry_${verse.trim()}`;
   if (apiCache.has(cacheKey)) {
-    return apiCache.get(cacheKey);
+    const cached = apiCache.get(cacheKey);
+    updateCacheAccess(apiCache, cacheKey, cached);
+    savePersistentCache(apiCache);
+    return cached;
   }
 
   try {
@@ -196,6 +218,10 @@ export async function analyzePoetry(verse: string, retryCount = 0): Promise<stri
     return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);
+    const errorMessage = error.message || String(error);
+    if (errorMessage && errorMessage !== "Failed to fetch") {
+      return `خطأ في السيرفر: ${errorMessage}`;
+    }
     return "فقد الاتصال بالخادم. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.";
   }
 }
@@ -203,7 +229,10 @@ export async function analyzePoetry(verse: string, retryCount = 0): Promise<stri
 export async function analyzeSpelling(text: string, retryCount = 0): Promise<SpellingResult> {
   const cacheKey = `spelling_${text.trim()}`;
   if (apiCache.has(cacheKey)) {
-    return apiCache.get(cacheKey);
+    const cached = apiCache.get(cacheKey);
+    updateCacheAccess(apiCache, cacheKey, cached);
+    savePersistentCache(apiCache);
+    return cached;
   }
 
   try {
@@ -235,6 +264,53 @@ export async function analyzeSpelling(text: string, retryCount = 0): Promise<Spe
     return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);
+    const errorMessage = error.message || String(error);
+    if (errorMessage && errorMessage !== "Failed to fetch") {
+      throw new Error(`خطأ في السيرفر: ${errorMessage}`);
+    }
+    throw new Error("فقد الاتصال بالخادم. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.");
+  }
+}
+
+export async function autoDiacritize(text: string, retryCount = 0): Promise<string> {
+  const cacheKey = `diacritize_${text.trim()}`;
+  if (apiCache.has(cacheKey)) {
+    const cached = apiCache.get(cacheKey);
+    updateCacheAccess(apiCache, cacheKey, cached);
+    savePersistentCache(apiCache);
+    return cached;
+  }
+
+  try {
+    const response = await fetch('/api/diacritize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      let errorMessage = 'Failed to diacritize text';
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        errorMessage = responseText || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = JSON.parse(responseText);
+    const finalResult = data.text || text;
+    apiCache.set(cacheKey, finalResult);
+    savePersistentCache(apiCache);
+    return finalResult;
+  } catch (error: any) {
+    console.error("API Error:", error);
+    const errorMessage = error.message || String(error);
+    if (errorMessage && errorMessage !== "Failed to fetch") {
+      throw new Error(`خطأ في السيرفر: ${errorMessage}`);
+    }
     throw new Error("فقد الاتصال بالخادم. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.");
   }
 }
@@ -242,7 +318,10 @@ export async function analyzeSpelling(text: string, retryCount = 0): Promise<Spe
 export async function generateDictation(ruleName: string, retryCount = 0): Promise<string> {
   const cacheKey = `dictation_${ruleName.trim()}`;
   if (apiCache.has(cacheKey)) {
-    return apiCache.get(cacheKey);
+    const cached = apiCache.get(cacheKey);
+    updateCacheAccess(apiCache, cacheKey, cached);
+    savePersistentCache(apiCache);
+    return cached;
   }
 
   try {
@@ -271,6 +350,64 @@ export async function generateDictation(ruleName: string, retryCount = 0): Promi
     return finalResult;
   } catch (error: any) {
     console.error("API Error:", error);
+    const errorMessage = error.message || String(error);
+    if (errorMessage && errorMessage !== "Failed to fetch") {
+      return `خطأ في السيرفر: ${errorMessage}`;
+    }
     return "فقد الاتصال بالخادم. يرجى التأكد من جودة اتصالك بالإنترنت والمحاولة مجدداً.";
+  }
+}
+
+export async function generateQuizQuestion(topic: string): Promise<{ question: string, type: string, context: string }> {
+  try {
+    const response = await fetch('/api/quiz/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic })
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      let errorMessage = 'Failed to generate quiz question';
+      try {
+        const errorData = JSON.parse(text);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        errorMessage = text || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return JSON.parse(text);
+  } catch (error: any) {
+    console.error("API Error:", error);
+    throw new Error(error.message || "فشل في توليد السؤال");
+  }
+}
+
+export async function evaluateQuizAnswer(questionData: any, userAnswer: string): Promise<{ isCorrect: boolean, feedback: string, correctAnswer: string }> {
+  try {
+    const response = await fetch('/api/quiz/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionData, userAnswer })
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      let errorMessage = 'Failed to evaluate answer';
+      try {
+        const errorData = JSON.parse(text);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        errorMessage = text || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return JSON.parse(text);
+  } catch (error: any) {
+    console.error("API Error:", error);
+    throw new Error(error.message || "فشل في تقييم الإجابة");
   }
 }

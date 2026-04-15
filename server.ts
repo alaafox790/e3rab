@@ -27,20 +27,27 @@ const getAI = () => {
   return new GoogleGenAI({ apiKey });
 };
 
-const executeWithRetry = async (operation: () => Promise<any>, maxRetries = 3, baseDelay = 1000) => {
+const executeWithRetry = async (operation: () => Promise<any>, maxRetries = 3, baseDelay = 2000) => {
   let attempt = 0;
   while (attempt < maxRetries) {
     try {
       return await operation();
     } catch (error: any) {
       attempt++;
-      const isOverloaded = error?.status === 503 || error?.message?.includes('503') || error?.message?.includes('high demand') || error?.message?.includes('UNAVAILABLE');
-      if (isOverloaded) {
+      const errorMsg = error?.message || String(error);
+      const isOverloaded = error?.status === 503 || errorMsg.includes('503') || errorMsg.includes('high demand') || errorMsg.includes('UNAVAILABLE');
+      const isQuotaExceeded = error?.status === 429 || errorMsg.includes('429') || errorMsg.includes('Quota exceeded') || errorMsg.includes('RESOURCE_EXHAUSTED');
+      
+      if (isOverloaded || isQuotaExceeded) {
         if (attempt >= maxRetries) {
-          throw new Error("الخدمة تواجه ضغطاً عالياً حالياً. يرجى المحاولة مرة أخرى بعد قليل.");
+          if (isQuotaExceeded) {
+            throw new Error("عذراً، تم تجاوز الحد المسموح به من الطلبات المجانية حالياً. يرجى الانتظار دقيقة واحدة ثم المحاولة مرة أخرى.");
+          }
+          throw new Error("عذراً، خوادم الذكاء الاصطناعي مشغولة حالياً. يرجى المحاولة مرة أخرى بعد ثوانٍ قليلة.");
         }
-        const delay = baseDelay * Math.pow(2, attempt - 1);
-        console.log(`API overloaded (503). Retrying in ${delay}ms... (Attempt ${attempt} of ${maxRetries})`);
+        // Exponential backoff with jitter
+        const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
+        console.log(`API ${isQuotaExceeded ? 'Quota' : 'Overload'} error. Retrying in ${Math.round(delay)}ms... (Attempt ${attempt} of ${maxRetries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
         throw error;
@@ -55,23 +62,31 @@ app.get("/api/health", (req, res) => {
 });
 
 app.post("/api/analyze", async (req, res) => {
-  const { sentence, mode, targetWords, image, showAllFacets } = req.body;
+  const { sentence, mode, targetWords, image, showAllFacets, customCategories } = req.body;
+  
+  const isSingleWord = !sentence.trim().includes(' ');
+  const speedInstruction = isSingleWord ? "\n**تعليمات للسرعة:** بما أن المدخل كلمة واحدة، قدم إجابة مختصرة ومباشرة جداً دون إطالة." : "";
   
   let prompt = '';
-  const languageInstruction = "\n**هام جداً:** يجب أن تكون الإجابة باللغة العربية فقط.";
+  const languageInstruction = "\n**هام جداً:** يجب أن تكون الإجابة باللغة العربية فقط." + speedInstruction;
+  
+  const defaultCategories = "مبتدأ، خبر، فاعل، مفعول به، فعل، حرف، اسم مجرور، مضاف إليه، نعت، حال، تمييز، اسم إن، خبر إن، اسم كان، خبر كان، مفعول مطلق، مفعول لأجله، ظرف، معطوف، بدل، توكيد، أخرى";
+  const categoriesString = customCategories && customCategories.length > 0 ? customCategories.join('، ') : defaultCategories;
   
   if (mode === 'full') {
-    prompt = `قم بإعراب الجملة التالية إعراباً تفصيلياً.${languageInstruction}
-    **هام جداً:**
-    1. يجب تشكيل الكلمات في حقل word تشكيلاً كاملاً (الفتحة، الضمة، الكسرة، السكون، الشدة، التنوين) كما في المثال: الشَّبَحُ، وَصَلَ، الْفَاعِلُ.
-    2. في حقل category، يجب أن تختار قيمة دقيقة من هذه القيم فقط: (مبتدأ، خبر، فاعل، مفعول به، فعل، حرف، اسم، أخرى).
+    prompt = `أنت خبير في النحو العربي والصرف. قم بإعراب الجملة التالية إعراباً تفصيلياً دقيقاً وفقاً لقواعد النحو العربي الفصيح.${languageInstruction}
+    **تعليمات هامة جداً:**
+    1. يجب تشكيل الكلمات في حقل word تشكيلاً كاملاً ودقيقاً (الفتحة، الضمة، الكسرة، السكون، الشدة، التنوين).
+    2. في حقل category، يجب أن تختار القيمة الأدق من هذه القائمة: (${categoriesString}).
+    3. في حقل analysis، قدم الإعراب الكامل (الحالة الإعرابية، العلامة، والسبب).
     الجملة هي: "${sentence}".`;
   } else if (mode === 'partial') {
-    prompt = `قم بإعراب الكلمات التالية فقط من الجملة "${sentence}".${languageInstruction}
-    **هام جداً:**
-    1. يجب تشكيل الكلمات في حقل word تشكيلاً كاملاً (الفتحة، الضمة، الكسرة، السكون، الشدة، التنوين).
-    2. في حقل category، يجب أن تختار قيمة دقيقة من هذه القيم فقط: (مبتدأ، خبر، فاعل، مفعول به، فعل، حرف، اسم، أخرى).
-    الكلمات هي: "${targetWords}".`;
+    prompt = `أنت خبير في النحو العربي. قم بإعراب الكلمات المحددة فقط من الجملة التالية إعراباً دقيقاً.${languageInstruction}
+    الجملة: "${sentence}"
+    الكلمات المطلوب إعرابها: "${targetWords}"
+    **تعليمات هامة:**
+    1. يجب تشكيل الكلمات في حقل word تشكيلاً كاملاً.
+    2. في حقل category، اختر من: (${categoriesString}).`;
   } else if (mode === 'sentence-position') {
     prompt = `استخرج الجمل الفرعية في الجملة التالية: "${sentence}"، وبين موقعها من الإعراب (لها محل أو ليس لها محل) مع التعليل.${languageInstruction}`;
   } else if (mode === 'extract') {
@@ -96,11 +111,17 @@ app.post("/api/analyze", async (req, res) => {
     الجملة الثانية: "${targetWords}"
     في حقل word ضع وجه المقارنة أو الكلمة، وفي حقل category اختر 'مقارنة'، وفي حقل analysis اكتب تفاصيل المقارنة بوضوح.`;
   } else if (mode === 'detailed') {
-    prompt = `قم بإعراب الجملة التالية إعراباً تفصيلياً جداً وشاملاً.${languageInstruction}
-    **هام جداً:**
-    1. يجب تشكيل الكلمات في حقل word تشكيلاً كاملاً.
-    2. في حقل category، يجب أن تختار قيمة دقيقة من هذه القيم فقط: (مبتدأ، خبر، فاعل، مفعول به، فعل، حرف، اسم، أخرى).
-    3. في حقل analysis، قدم شرحاً مفصلاً جداً لكل كلمة، مع ذكر جميع الأوجه الإعرابية الممكنة، والتعليل النحوي، والموقع الإعرابي، والعلامة الإعرابية، وسببها.
+    prompt = `أنت مرجع في علوم اللغة العربية. قم بإعراب الجملة التالية إعراباً تفصيلياً شاملاً وعميقاً (إعراب متقدم).${languageInstruction}
+    **تعليمات صارمة:**
+    1. تشكيل كامل ودقيق لكل حرف في حقل word.
+    2. في حقل category، اختر القيمة الأدق: (مبتدأ، خبر، فاعل، مفعول به، فعل، حرف، اسم مجرور، مضاف إليه، نعت، حال، تمييز، اسم إن، خبر إن، اسم كان، خبر كان، مفعول مطلق، مفعول لأجله، ظرف، معطوف، بدل، توكيد، أخرى).
+    3. في حقل analysis، قدم شرحاً وافياً يتضمن: الموقع الإعرابي، الحالة، العلامة الإعرابية وسببها.
+    4. **ميزات الإعراب المتقدم (يجب تضمينها إن وجدت):**
+       - **متعلق الجار والمجرور والظرف:** اذكر دائماً متعلق الجار والمجرور أو الظرف (بأي فعل أو مشتق يتعلق؟).
+       - **ضمير الشأن:** إذا كان هناك ضمير شأن، وضحه واشرح موقعه.
+       - **الاختلافات الجوهرية الدقيقة:** إذا كانت الكلمة تحتمل إعرابين متقاربين (مثل النعت والبدل، أو الحال والتمييز، أو المفعول لأجله والمفعول المطلق)، اشرح الفرق ولماذا تم ترجيح الإعراب المختار.
+       - **الأوجه الإعرابية الأخرى:** اذكر أي أوجه إعرابية أخرى محتملة للكلمة إن وجدت.
+       - **الاستثناءات والحالات الصعبة:** اشرح أي استثناءات نحوية شائعة أو حالات صعبة تتعلق بتركيب الجملة، مثل الترتيب غير المعتاد للكلمات (التقديم والتأخير) أو الأشكال النحوية الأقل شيوعاً.
     الجملة هي: "${sentence}".`;
   }
 
@@ -118,7 +139,7 @@ app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getAI();
     const responseStream = await executeWithRetry(() => ai.models.generateContentStream({
-      model: "gemini-3.1-flash-lite-preview",
+      model: "gemini-3-flash-preview",
       contents: { parts: contents },
       config: {
         responseMimeType: "application/json",
@@ -162,7 +183,7 @@ app.post("/api/rule", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-3.1-flash-lite-preview",
+      model: "gemini-3-flash-preview",
       contents: prompt
     }));
     res.json({ text: response.text });
@@ -184,7 +205,7 @@ app.post("/api/poetry", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-3.1-flash-lite-preview",
+      model: "gemini-3-flash-preview",
       contents: prompt
     }));
     res.json({ text: response.text });
@@ -199,7 +220,7 @@ app.post("/api/dictation", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-3.1-flash-lite-preview",
+      model: "gemini-3-flash-preview",
       contents: prompt,
     }));
     res.json({ text: response.text });
@@ -223,10 +244,99 @@ app.post("/api/spelling", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-3.1-flash-lite-preview",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+      }
+    }));
+    res.json(JSON.parse(response.text || '{}'));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/diacritize", async (req, res) => {
+  const { text } = req.body;
+  const isSingleWord = !text.trim().includes(' ');
+  const speedInstruction = isSingleWord ? " أجب بكلمة واحدة فقط مشكّلة دون أي إضافات." : "";
+  
+  const prompt = `قم بتشكيل النص العربي التالي تشكيلاً كاملاً وصحيحاً نحوياً ولغوياً.${speedInstruction} أعد النص المشكّل فقط بدون أي إضافات أو شروحات:
+  "${text}"`;
+  try {
+    const ai = getAI();
+    const response = await executeWithRetry(() => ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    }));
+    res.json({ text: response.text });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/quiz/generate", async (req, res) => {
+  const { topic } = req.body;
+  const prompt = `أنت معلم لغة عربية خبير. قم بتوليد سؤال تحدي (اختبر نفسك) في النحو أو الصرف حول موضوع: "${topic}".
+  إذا كان الموضوع "عشوائي"، فاختر قاعدة نحوية أو صرفية مشهورة (مثل اسم الفاعل، اسم المفعول، الحال، التمييز، المنادى، الممنوع من الصرف، إلخ).
+  السؤال يجب أن يكون عبارة عن جملة أو بيت شعر أو آية قرآنية، ويطلب من المستخدم استخراج شيء معين أو إعراب كلمة أو تحويل جملة.
+  يجب أن تكون الإجابة بصيغة JSON فقط، وتحتوي على:
+  1. "question": نص السؤال بوضوح (مثال: استخرج اسم الفاعل من الجملة التالية...).
+  2. "type": نوع السؤال (مثال: استخراج، إعراب، تحويل).
+  3. "context": الجملة أو النص الذي يدور حوله السؤال (مشكّل تشكيلاً صحيحاً).`;
+  
+  try {
+    const ai = getAI();
+    const response = await executeWithRetry(() => ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            type: { type: Type.STRING },
+            context: { type: Type.STRING }
+          },
+          required: ['question', 'type', 'context']
+        }
+      }
+    }));
+    res.json(JSON.parse(response.text || '{}'));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/quiz/evaluate", async (req, res) => {
+  const { questionData, userAnswer } = req.body;
+  const prompt = `أنت معلم لغة عربية خبير. قم بتقييم إجابة الطالب على السؤال التالي:
+  السؤال: ${questionData.question}
+  النص: ${questionData.context}
+  إجابة الطالب: ${userAnswer}
+  
+  يجب أن تكون الإجابة بصيغة JSON فقط، وتحتوي على:
+  1. "isCorrect": قيمة منطقية (true/false) تشير إلى ما إذا كانت الإجابة صحيحة أم لا (اقبل الإجابات الصحيحة حتى لو كانت بصيغة مختلفة قليلاً).
+  2. "feedback": تعليق تشجيعي وتوضيحي يشرح لماذا الإجابة صحيحة أو خاطئة.
+  3. "correctAnswer": الإجابة النموذجية الكاملة.`;
+  
+  try {
+    const ai = getAI();
+    const response = await executeWithRetry(() => ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            isCorrect: { type: Type.BOOLEAN },
+            feedback: { type: Type.STRING },
+            correctAnswer: { type: Type.STRING }
+          },
+          required: ['isCorrect', 'feedback', 'correctAnswer']
+        }
       }
     }));
     res.json(JSON.parse(response.text || '{}'));
