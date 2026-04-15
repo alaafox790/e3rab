@@ -139,7 +139,7 @@ app.post("/api/analyze", async (req, res) => {
   try {
     const ai = getAI();
     const responseStream = await executeWithRetry(() => ai.models.generateContentStream({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-pro-preview",
       contents: { parts: contents },
       config: {
         responseMimeType: "application/json",
@@ -183,7 +183,7 @@ app.post("/api/rule", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-pro-preview",
       contents: prompt
     }));
     res.json({ text: response.text });
@@ -205,7 +205,7 @@ app.post("/api/poetry", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-pro-preview",
       contents: prompt
     }));
     res.json({ text: response.text });
@@ -220,7 +220,7 @@ app.post("/api/dictation", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-pro-preview",
       contents: prompt,
     }));
     res.json({ text: response.text });
@@ -244,7 +244,7 @@ app.post("/api/spelling", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-pro-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -266,7 +266,7 @@ app.post("/api/diacritize", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-pro-preview",
       contents: prompt,
     }));
     res.json({ text: response.text });
@@ -288,7 +288,7 @@ app.post("/api/quiz/generate", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-pro-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -324,7 +324,7 @@ app.post("/api/quiz/evaluate", async (req, res) => {
   try {
     const ai = getAI();
     const response = await executeWithRetry(() => ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-pro-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
